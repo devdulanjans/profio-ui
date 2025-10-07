@@ -1,0 +1,128 @@
+import 'dart:convert';
+import 'dart:developer';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:http/http.dart' as http;
+import 'package:profio/core/models/subscription.dart';
+import 'package:profio/features/services/api_constants.dart';
+
+
+
+Future<Map<String, String>> getAuthHeaders() async {
+  final user = FirebaseAuth.instance.currentUser;
+
+  if (user == null) throw Exception('User not logged in');
+
+  final idToken = await user.getIdToken(); // or getIdToken(true) to force refresh
+  log("AccessToken:${idToken} - UserId-${user.uid}");
+  return {
+    'Content-Type': 'application/json',
+    'Authorization': 'Bearer $idToken',
+  };
+}
+
+
+
+
+Future<bool> userRegister(String email,String userId) async {
+  final url = Uri.parse("$baseUrl$postSignUp");
+
+  final Map<String, String> requestBody = {
+    "email":email,
+    "uid": userId,
+  };
+
+  try {
+    final headers = await getAuthHeaders();
+    log("CheckApiUrl:${url}");
+    log("CheckHeaders:${headers}");
+    log("CheckRequest:${requestBody}");
+    final response = await http.post(
+      url,
+      headers: headers,
+      body: jsonEncode(requestBody),
+    );
+
+    log("CheckResponseCode:${response.statusCode}");
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      print("✅ Success: ${response.body}");
+      return true;
+    }
+    else {
+      print("❌ Failed: ${response.statusCode} - ${response.body}");
+      return false;
+    }
+  } catch (e) {
+    print("❌ Error: $e");
+    return false;
+  }
+}
+
+
+Future<List<Subscription>> getSubscriptionTypes() async {
+  List<Subscription> subscriptions = [];
+  final url = Uri.parse("$baseUrl$getAllSubscriptions");
+
+
+  try {
+    final headers = await getAuthHeaders();
+    final response = await http.get(url, headers: headers,);
+
+    log("CheckResponseCode:${response.statusCode}");
+    if (response.statusCode == 200 ) {
+      final results = json.decode(response.body);
+      var data = results['data'] as List;
+      if(data.isNotEmpty){
+        subscriptions = data.map((i) => Subscription.fromJson(i)).toList();
+      }
+      return subscriptions;
+    }
+    else {
+      print("❌ Failed: ${response.statusCode} - ${response.body}");
+      return subscriptions;
+    }
+  } catch (e) {
+    print("❌ Error: $e");
+    return subscriptions;
+  }
+}
+
+
+Future<Map<String, String>?> getPreSignedUrl(String userId, String fileExt,{String title = "",String language = ""}) async {
+
+  final url = Uri.parse("$baseUrl$postGetPreSignedUrl");
+
+  String profileBody = jsonEncode({
+    "userId":userId,
+    "fileExtension":"$fileExt",
+    "type":"PROFILE" //DOCUMENT
+  });
+  String documentBody = jsonEncode({
+    "userId":userId,
+    "fileExtension":"$fileExt",
+    "type":"DOCUMENT",
+    "title":title,
+    "language":language,
+  });
+
+  try {
+    final headers = await getAuthHeaders();
+    final response = await http.post(url, headers: headers,
+      body: title == "" ? profileBody : documentBody
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return {
+        'uploadUrl': data['uploadUrl'],
+        'publicUrl': data['publicUrl'],
+      };
+    } else {
+      print('❌ Failed to get presigned URL');
+      return null;
+    }
+  } catch (e) {
+    print("❌ Error: $e");
+    return null;
+  }
+}
+
