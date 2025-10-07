@@ -39,16 +39,19 @@ class UserProfilePage extends StatelessWidget {
         'isDirect': true,
       },
     ];
+    final List<Map<String, dynamic>> dynamicCardDataNew = [
+
+    ];
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
-          Text("asdasd",style: TextStyle(color: Colors.black),),
+          Text("",style: TextStyle(color: Colors.black),),
           SizedBox(
             height: 400,
             width: MediaQuery.of(context).size.width,
-            child: CardSwiper(
+            child: dynamicCardDataNew.isNotEmpty ? CardSwiper(
               cardsCount: dynamicCardData.length,
 
               cardBuilder: (context, index) {
@@ -185,6 +188,21 @@ class UserProfilePage extends StatelessWidget {
                   ),
                 );
               },
+            ):Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                border: Border.all(
+                  color: Colors.grey.shade300, // Choose your border color
+                  width: 1.0, // Choose your border width
+                ),
+                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10, offset: const Offset(0,5))],
+                borderRadius: BorderRadius.circular(16.0), // Optional: if you want rounded corners for the border
+              ),
+              margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 4.0), // Optional: to add some space around each bordered item
+              padding: const EdgeInsets.all(16),
+              child: Center(
+                child: Image.asset('assets/no_cards.jpg',),
+              ),
             ),
           ),
           // 🔹 Business Profile Cards

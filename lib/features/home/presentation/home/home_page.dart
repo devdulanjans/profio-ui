@@ -145,6 +145,7 @@ import '../../../../providers/locale_provider.dart';
 import '../contact/AllContactsPage.dart';
 import '../my_profile/MyCreatedProfilesScreen.dart';
 import '../my_profile/create_card.dart';
+import '../profile/profile_edit.dart';
 import '../scanner/ocr_scanner.dart';
 import '../settings/about_us.dart';
 import '../settings/help_and_support.dart';
@@ -167,7 +168,11 @@ class _HomePageState extends State<HomePage> {
   Widget listOfInternalPages(){
     if(widget.parentPageId == 100){
       return const SubscriptionPage();
-    } else if(widget.parentPageId == 102){
+    }
+    else if(widget.parentPageId == 101){
+      return const ProfileEditPage();
+    }
+    else if(widget.parentPageId == 102){
       return const NotificationPage();
     } else if(widget.parentPageId == 103){
       return const PrivacyPolicyPage();
@@ -176,6 +181,7 @@ class _HomePageState extends State<HomePage> {
     } else if(widget.parentPageId == 120){
       return const ProfileSetupPage();
     }
+
     else if(widget.parentPageId == 105){
       return const AboutUsPage();
     }
@@ -250,6 +256,7 @@ class _HomePageState extends State<HomePage> {
       appBar: AppBar(
         title: Text(localeProvider.getText(key: _getTitleKeyForCurrentPage())),
         centerTitle: true,
+        automaticallyImplyLeading: false,
         actions: [
           IconButton(
             onPressed: () => localeProvider.toggleLanguage(),

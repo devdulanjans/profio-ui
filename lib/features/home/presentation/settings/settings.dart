@@ -12,6 +12,10 @@ class SettingsList extends StatelessWidget {
       switch (selectedPage) {
         case 'Profile':
         // Navigate to Profile page
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => HomePage(parentPageId: 101)),
+          );
           break;
         case 'Subscription':
           Navigator.push(
