@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 import '../../../../core/theme/app_text.dart';
 import '../../../../providers/locale_provider.dart';
 import '../../../../providers/theme_provider.dart';
+import '../../../services/AuthService.dart';
+import '../../../services/api_service.dart';
 
 class SignupPage extends StatefulWidget {
   const SignupPage({Key? key}) : super(key: key);
@@ -13,6 +15,7 @@ class SignupPage extends StatefulWidget {
 
 class _SignupPageState extends State<SignupPage> {
   final _formKey = GlobalKey<FormState>();
+  final AuthService _authService = AuthService();
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -25,29 +28,63 @@ class _SignupPageState extends State<SignupPage> {
       return;
     }
 
-    setState(() => _isLoading = true);
-
-    // Show loader dialog
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => const Center(
-        child: CircularProgressIndicator(
-          strokeWidth: 4,
-          valueColor: AlwaysStoppedAnimation<Color>(Colors.blueAccent),
-        ),
-      ),
-    );
-
     try {
       // Simulate API call
-      await Future.delayed(const Duration(seconds: 2));
+      if(_emailController.text.isEmpty){
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("⚠️ Please enter email.")),
+        );
+      }
+      else if(_passwordController.text.isEmpty){
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("⚠️ Please enter password.")),
+        );
+      }
+      else{
+        setState(() => _isLoading = true);
 
-      if (!mounted) return;
-      Navigator.pop(context); // close loader
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("✅ Signup successful!")),
-      );
+        // Show loader dialog
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (_) => const Center(
+            child: CircularProgressIndicator(
+              strokeWidth: 4,
+              valueColor: AlwaysStoppedAnimation<Color>(Colors.blueAccent),
+            ),
+          ),
+        );
+        final user = await _authService.signUpWithEmailPassword(_emailController.text, _passwordController.text);
+        if (user != null) {
+         // String? idToken = await user.getIdToken(); //
+         // print("checkToken:${idToken} --- ${user.uid}");
+          var result = await userRegister(_emailController.text, user.uid);
+          if(result){
+            if (!mounted) return;
+            Navigator.pop(context); // close loader
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text("✅ Signup successful!")),
+            );
+          }else{
+            Navigator.pop(context); // close loader
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text("❌ Signup register failed")),
+            );
+          }
+
+        } else {
+          if (!mounted) return;
+          Navigator.pop(context); // close loader
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("❌ Signup failed")),
+          );
+        }
+
+
+      }
+
+
+
     } catch (e) {
       if (!mounted) return;
       Navigator.pop(context);
@@ -59,7 +96,7 @@ class _SignupPageState extends State<SignupPage> {
         setState(() => _isLoading = false);
       }
     }
-    Navigator.pushReplacementNamed(context, '/home');
+    Navigator.pushReplacementNamed(context, '/login');
   }
 
   @override

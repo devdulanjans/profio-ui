@@ -39,11 +39,17 @@ dependencies:
   image_picker: ^1.0.7
   google_mlkit_text_recognition: ^0.12.0
   flutter_contacts: ^1.1.7
-  permission_handler: ^11.3.0
+  permission_handler: ^12.0.1
   googleapis: ^14.0.0
   googleapis_auth: ^2.0.0
   camera: ^0.11.0+2
   flutter_wizard: ^1.0.0
+  firebase_core: ^4.1.1
+  firebase_auth: ^6.1.0
+  http: ^1.5.0
+  device_info_plus: ^12.1.0
+  file_picker: ^10.3.3
+
 
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
@@ -80,7 +86,7 @@ flutter:
   # To add assets to your application, add an assets section, like this:
   assets:
     - assets/
-    - assets/keys/profio-473307-e18ad86c6837.json
+    #- assets/keys/profio-473307-e18ad86c6837.json
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

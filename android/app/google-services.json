@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "980062462555",
+    "project_id": "profio-dbcm-app-dev",
+    "storage_bucket": "profio-dbcm-app-dev.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:980062462555:android:40d14cc7df2c548ded157e",
+        "android_client_info": {
+          "package_name": "app.profio.digitalvisitingcard.app.profio"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCjd46NtSUgIqwLlMwqhXOrSx8DiHdXGWo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:980062462555:android:26165b0c08b3d332ed157e",
+        "android_client_info": {
+          "package_name": "com.profiodbcmapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCjd46NtSUgIqwLlMwqhXOrSx8DiHdXGWo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

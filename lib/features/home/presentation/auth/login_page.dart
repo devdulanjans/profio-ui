@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../../../core/theme/app_text.dart';
 import '../../../../providers/locale_provider.dart';
 import '../../../../providers/theme_provider.dart';
+import '../../../services/AuthService.dart';
 
 class LoginPage extends StatelessWidget {
   const LoginPage({super.key});
@@ -12,6 +13,11 @@ class LoginPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final localeProvider = Provider.of<LocaleProvider>(context);
     final themeProvider = Provider.of<ThemeProvider>(context);
+    final AuthService _authService = AuthService();
+    TextEditingController _email = TextEditingController();
+    TextEditingController _password = TextEditingController();
+    _email.text = "profio1@gmail.com";
+    _password.text = "abcd1234!";
 
     return Scaffold(
       appBar: AppBar(
@@ -87,6 +93,7 @@ class LoginPage extends StatelessWidget {
 
                   // Email TextField
                   TextField(
+                    controller: _email,
                     decoration: InputDecoration(
                       labelText: localeProvider.getText(key: 'email'),
                       prefixIcon: const Icon(Icons.email),
@@ -99,6 +106,7 @@ class LoginPage extends StatelessWidget {
 
                   // Password TextField
                   TextField(
+                    controller: _password,
                     obscureText: true,
                     decoration: InputDecoration(
                       labelText: localeProvider.getText(key: 'password'),
@@ -114,8 +122,28 @@ class LoginPage extends StatelessWidget {
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
-                      onPressed: () {
-                        Navigator.pushReplacementNamed(context, '/home');
+                      onPressed: () async{
+                        if(_email.text.isEmpty){
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text("⚠️ Please enter email.")),
+                          );
+                        }else if(_password.text.isEmpty){
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text("⚠️ Please enter password.")),
+                          );
+                        }else{
+                          final user = await _authService.signInWithEmailPassword(_email.text, _password.text);
+                          if (user != null) {
+                            print("CheckUserObject:${user}");
+                            Navigator.pushReplacementNamed(context, '/home');
+                          }else{
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text("❌ Login failed")),
+                            );
+                          }
+
+                        }
+
                       },
                       child: Text(localeProvider.getText(key: 'login')),
                     ),
