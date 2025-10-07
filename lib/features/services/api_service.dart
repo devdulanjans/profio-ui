@@ -4,11 +4,18 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:http/http.dart' as http;
 import 'package:profio/core/models/subscription.dart';
 import 'package:profio/features/services/api_constants.dart';
+import 'package:file_picker/file_picker.dart';
+
+
+Future<User?> getCurrentUser() async{
+  final user = FirebaseAuth.instance.currentUser;
+  return user;
+}
 
 
 
 Future<Map<String, String>> getAuthHeaders() async {
-  final user = FirebaseAuth.instance.currentUser;
+  final user = await getCurrentUser();
 
   if (user == null) throw Exception('User not logged in');
 
@@ -112,9 +119,14 @@ Future<Map<String, String>?> getPreSignedUrl(String userId, String fileExt,{Stri
 
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
+      final presignData = data['data'];
+      if (presignData == null) {
+        print('❌ No data field in response');
+        return null;
+      }
       return {
-        'uploadUrl': data['uploadUrl'],
-        'publicUrl': data['publicUrl'],
+        'uploadUrl': presignData['uploadUrl'],
+        'fileURL': presignData['fileURL'],
       };
     } else {
       print('❌ Failed to get presigned URL');
@@ -124,5 +136,77 @@ Future<Map<String, String>?> getPreSignedUrl(String userId, String fileExt,{Stri
     print("❌ Error: $e");
     return null;
   }
+}
+
+Future<bool> uploadFileToPreSignedUrl(String uploadUrl, PlatformFile file) async {
+  final headers = await getAuthHeaders();
+  final response = await http.put(
+    Uri.parse(uploadUrl),
+    headers: headers,
+    body: file.bytes,
+  );
+
+  return response.statusCode == 200 || response.statusCode == 204;
+}
+
+Future<bool> updateUserDetails(Map<String, String> request,String userId) async {
+  final url = Uri.parse("$baseUrl$putUpdateUserDetails/$userId");
+
+  final Map<String, String> requestBody = request;
+
+  try {
+    final headers = await getAuthHeaders();
+    log("CheckApiUrl:${url}");
+    log("CheckHeaders:${headers}");
+    log("CheckRequest:${requestBody}");
+    final response = await http.post(
+      url,
+      headers: headers,
+      body: jsonEncode(requestBody),
+    );
+
+    log("CheckResponseCode:${response.statusCode}");
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      print("✅ Success: ${response.body}");
+      return true;
+    }
+    else {
+      print("❌ Failed: ${response.statusCode} - ${response.body}");
+      return false;
+    }
+  } catch (e) {
+    print("❌ Error: $e");
+    return false;
+  }
+}
+
+
+Future<Map<String, dynamic>> getUserByUUID() async {
+  Map<String, dynamic> data = {};
+  final user = await getCurrentUser();
+  if(user == null) return {};
+
+  final url = Uri.parse("$baseUrl$getUserByUID/${user.uid}");
+
+
+  try {
+    final headers = await getAuthHeaders();
+    final response = await http.get(url, headers: headers,);
+
+    log("CheckResponseCode:${response.statusCode}");
+    if (response.statusCode == 200 ) {
+      final results = json.decode(response.body);
+      data = results;
+    }
+    else {
+      print("❌ Failed: ${response.statusCode} - ${response.body}");
+      return data;
+    }
+  } catch (e) {
+    print("❌ Error: $e");
+    return data;
+  }
+
+  return data;
 }
 
