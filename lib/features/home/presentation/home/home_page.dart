@@ -137,8 +137,10 @@
 
 import 'package:flutter/material.dart';
 import 'package:profio/features/home/presentation/home/user_profile_page.dart';
+import 'package:profio/features/services/api_service.dart';
 import 'package:provider/provider.dart';
 
+import '../../../../core/constants/app_strings.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text.dart';
 import '../../../../providers/locale_provider.dart';
@@ -153,6 +155,7 @@ import '../settings/notification.dart';
 import '../settings/settings.dart';
 import '../settings/subcription_page.dart';
 import '../settings/terms_adn_condition.dart';
+import '../templates/all_templates.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key, required this.parentPageId});
@@ -179,7 +182,7 @@ class _HomePageState extends State<HomePage> {
     } else if(widget.parentPageId == 104){
       return const HelpSupportPage();
     } else if(widget.parentPageId == 120){
-      return const ProfileSetupPage();
+      return const AllTemplatesPage();
     }
 
     else if(widget.parentPageId == 105){
@@ -204,6 +207,7 @@ class _HomePageState extends State<HomePage> {
     super.initState();
     // Always start at index 0 for BottomNavigationBar
     _currentIndex = 0;
+    getUserDetails();
   }
 
   List<BottomNavigationBarItem> _bottomNavItems(LocaleProvider localeProvider) {
@@ -246,6 +250,17 @@ class _HomePageState extends State<HomePage> {
       default:
         return 'home';
     }
+  }
+
+
+  Future<void> getUserDetails() async{
+    if(appUserId == ""){
+      Map<String,dynamic> user = await getUserByUUID() ?? {};
+      if(user != {}){
+        appUserId = user['_id'] ?? "";
+      }
+    }
+
   }
 
   @override

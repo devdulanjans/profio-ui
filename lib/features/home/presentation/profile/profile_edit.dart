@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_wizard/flutter_wizard.dart';
+import 'package:profio/features/services/api_service.dart';
 
+import '../../../../core/helpers/global_helper.dart';
 import '../../../../core/helpers/permission_handler.dart';
 import 'package:file_picker/file_picker.dart';
 
@@ -56,7 +58,8 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
   FilePickerResult? _pickedDocumentFile;
   List<Map<String,dynamic>> otherLinks = [];
   List<Map<String, dynamic>> uploadedDocs = [];
-
+  Map<String,dynamic> userDetails = {};
+  bool isLoading = true;
 
   @override
   void initState() {
@@ -67,6 +70,19 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
       WizardStepController(step: _socialState),
       WizardStepController(step: _documentState),
     ];
+    _loadUserDetails();
+
+  }
+
+  Future<void> _loadUserDetails() async {
+    setState(() {
+      isLoading = true;
+    });
+
+    userDetails = await getUserByUUID();
+    setState(() {
+      isLoading = false;
+    });
   }
 
   @override
@@ -111,7 +127,7 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
       onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
       onPanDown: (_) => FocusManager.instance.primaryFocus?.unfocus(),
       onPanStart: (_) => FocusManager.instance.primaryFocus?.unfocus(),
-      child: DefaultWizardController(
+      child: !isLoading ? DefaultWizardController(
         stepControllers: _stepControllers,
         child: Builder(builder: (context) {
           final wizard = context.wizardController; // extension from the package
@@ -163,7 +179,12 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
             ],
           );
         }),
-      ),
+      )
+          :Center(
+          child: SizedBox(
+              height: 30,
+              width: 30,
+              child: CircularProgressIndicator())),
     );
   }
 
@@ -277,7 +298,7 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
             style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold,color: Colors.black)),
         const SizedBox(height: 16),
         _textField("Company Name*", cNameController),
-        _textField("Job Title*", cEmailController),
+        _textField("Job Title*", cJobTitleEmailController),
         _textField("Company Email Address*", cEmailController,type: TextInputType.emailAddress),
         _textField("Company Phone Number*", cPhoneController,type: TextInputType.phone),
         _textField("Company Address", cAddressController,type: TextInputType.streetAddress),
@@ -533,8 +554,19 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
           initialData: wizard.getIsGoBackEnabled(),
           builder: (c, s) {
             final enabled = s.data ?? false;
+            final isFirstPage = wizard.index == 0;
             return OutlinedButton(
-              onPressed: enabled ? () => wizard.previous() : null, // ✅ fixed
+              onPressed: enabled
+                  ? () {
+                if (isFirstPage) {
+                  // If it's the first page, navigate back to the previous screen
+                  Navigator.pop(c);
+                } else {
+                  // Otherwise, go to the previous step in the wizard
+                  wizard.previous();
+                }
+              }
+                  : null,
               child: const Text('Back'),
             );
           },
@@ -545,9 +577,8 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
             ? ElevatedButton(
           onPressed: () {
             // Final save
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Saved profile ✅')),
-            );
+            updateProfile();
+
           },
           child: const Text('Save'),
         )
@@ -598,7 +629,7 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
   }
 
   bool _validatePersonalDetails() {
-    return true;
+    // return true;
     if (uNameController.text.trim().isEmpty ||
         uEmailController.text.trim().isEmpty ||
         uPhoneController.text.trim().isEmpty || uAddressController.text.trim().isEmpty || uWebSiteController.text.trim().isEmpty) {
@@ -611,7 +642,7 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
   }
 
   bool _validateCompanyDetails() {
-    return true;
+   // return true;
     if (cNameController.text.trim().isEmpty ||
         cJobTitleEmailController.text.trim().isEmpty ||
         cEmailController.text.trim().isEmpty || cPhoneController.text.trim().isEmpty) {
@@ -624,7 +655,7 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
   }
 
   bool _validateSocialMediaDetails() {
-    return true;
+    //return true;
     if (sWhatsappController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('⚠️ Please fill in all required social media details.')),
@@ -636,6 +667,93 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
 
   bool _validateDocuments() {
     return true;
+  }
+
+  void updateProfile() async{
+    String userId = "";
+    String userImageUrl = "";
+    List<Map<String,dynamic>> documents = [];
+    //upload profile picture
+    GlobalHelper().progressDialog(context,"Profile update","Profile updating, please wait...");
+    if((_pickedFile?.path ?? "") != ""){
+      if(userDetails != {}){
+        userId = userDetails['_id'] ?? "";
+      }
+      var preSignedUrl = await getPreSignedUrl(userId,_pickedFile?.extension ?? "",);
+      if(preSignedUrl != {}){
+        userImageUrl = preSignedUrl?['fileURL'] ?? "";
+        var result = await uploadFileToPreSignedUrl(preSignedUrl?['uploadUrl'] ?? "",_pickedFile ?? PlatformFile(name: "", size: 1));
+        print("ProfileImageUploaded: ${result}");
+      }
+
+    }
+
+    //upload selected documents
+    if(uploadedDocs.isNotEmpty){
+      for(int i=0; i< uploadedDocs.length; i++){
+          var uploadDoc = uploadedDocs[i];
+          PlatformFile tempDocument = uploadDoc['file'];
+          String title = uploadDoc['title'];
+          if(tempDocument.path != ""){
+            var preSignedUrl = await getPreSignedUrl(userId,tempDocument.extension ?? "",title: title,language: "en");
+            if(preSignedUrl != {}){
+              var tempDocumentUrl = preSignedUrl?['fileURL'] ?? "";
+              var result = await uploadFileToPreSignedUrl(preSignedUrl?['uploadUrl'] ?? "",_pickedFile ?? PlatformFile(name: "", size: 1));
+              print("DocumentImageUploaded: ${result}");
+              if(result){
+                documents.add({
+                  "title": title,
+                  "file": tempDocumentUrl,
+                });
+              }
+            }
+          }
+
+
+
+      }
+    }
+
+    //update the profile with details
+    // Function to build the API data
+    Map<String, dynamic> apiRequest = {
+        "id": userId,
+        "name": uNameController.text.toString().trim(),
+        "phoneNumber": uNameController.text.toString().trim(),
+        "personalAddress": uNameController.text.toString().trim(),
+        "personalWebsite": uNameController.text.toString().trim(),
+        "companyName": uNameController.text.toString().trim(),
+        "jobTitle": uNameController.text.toString().trim(),
+        "companyEmail": uNameController.text.toString().trim(),
+        "companyPhoneNumber": uNameController.text.toString().trim(),
+        "companyAddress": uNameController.text.toString().trim(),
+        "companyWebsite": uNameController.text.toString().trim(),
+        "whatsappNumber": uNameController.text.toString().trim(),
+        "facebookUrl": uNameController.text.toString().trim(),
+        "instagramUrl": uNameController.text.toString().trim(),
+        "linkedInUrl": uNameController.text.toString().trim(),
+        "tikTokUrl": uNameController.text.toString().trim(),
+        "youtubeUrl": uNameController.text.toString().trim(),
+        "otherLinks": otherLinks.map((link) => {
+          "title": link["title"].text,
+          "url": link["url"].text,
+        }).toList(),
+        "documents": documents.map((doc) => {
+          "title": doc["title"].text,
+          "url": doc["url"].text,
+        }).toList(),
+        "language": "en",
+      };
+
+
+    //update the api
+    var profileUpdateResult = await updateUserDetails(apiRequest,userId);
+    if(profileUpdateResult){
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Profile Update Successfully ✅')),);
+    }else{
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Profile Update Failed ❌')),);
+    }
+    Navigator.of(context)..pop()..pop();
   }
 
 

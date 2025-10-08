@@ -2,7 +2,9 @@ import 'dart:convert';
 import 'dart:developer';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:http/http.dart' as http;
+import 'package:profio/core/constants/app_strings.dart';
 import 'package:profio/core/models/subscription.dart';
+import 'package:profio/core/models/template.dart';
 import 'package:profio/features/services/api_constants.dart';
 import 'package:file_picker/file_picker.dart';
 
@@ -113,6 +115,7 @@ Future<Map<String, String>?> getPreSignedUrl(String userId, String fileExt,{Stri
 
   try {
     final headers = await getAuthHeaders();
+    log("CheckRequestBody:${profileBody}");
     final response = await http.post(url, headers: headers,
       body: title == "" ? profileBody : documentBody
     );
@@ -125,7 +128,7 @@ Future<Map<String, String>?> getPreSignedUrl(String userId, String fileExt,{Stri
         return null;
       }
       return {
-        'uploadUrl': presignData['uploadUrl'],
+        'uploadUrl': presignData['uploadURL'],
         'fileURL': presignData['fileURL'],
       };
     } else {
@@ -149,20 +152,18 @@ Future<bool> uploadFileToPreSignedUrl(String uploadUrl, PlatformFile file) async
   return response.statusCode == 200 || response.statusCode == 204;
 }
 
-Future<bool> updateUserDetails(Map<String, String> request,String userId) async {
+Future<bool> updateUserDetails(Map<String, dynamic> request,String userId) async {
   final url = Uri.parse("$baseUrl$putUpdateUserDetails/$userId");
-
-  final Map<String, String> requestBody = request;
 
   try {
     final headers = await getAuthHeaders();
     log("CheckApiUrl:${url}");
     log("CheckHeaders:${headers}");
-    log("CheckRequest:${requestBody}");
+    log("CheckRequest:${request}");
     final response = await http.post(
       url,
       headers: headers,
-      body: jsonEncode(requestBody),
+      body: jsonEncode(request),
     );
 
     log("CheckResponseCode:${response.statusCode}");
@@ -209,4 +210,60 @@ Future<Map<String, dynamic>> getUserByUUID() async {
 
   return data;
 }
+
+Future<List<Template>> getAllTemplates(int type) async { //type == 1 - All | 2- User templates
+  List<Template> templates = [];
+  String typeUrl = type == 1 ? "$baseUrl$getAllTemplatesDetails" :(type == 2 ? "$baseUrl$getAllTemplatesDetails/$appUserId" : "");
+  final url = Uri.parse(typeUrl);
+
+
+  try {
+    final headers = await getAuthHeaders();
+    final response = await http.get(url, headers: headers,);
+
+    log("CheckResponseCode:${response.statusCode}");
+    if (response.statusCode == 200 ) {
+      final results = json.decode(response.body);
+      var data = results['data'] as List;
+      if(data.isNotEmpty){
+        templates = data.map((i) => Template.fromJson(i)).toList();
+      }
+      return templates;
+    }
+    else {
+      print("❌ Failed: ${response.statusCode} - ${response.body}");
+      return templates;
+    }
+  } catch (e) {
+    print("❌ Error: $e");
+    return templates;
+  }
+}
+
+
+Future<bool> createTemplateForUser(String userId,String templateId) async {
+  final url = Uri.parse("$baseUrl${postCreateTemplateForUser(userId, templateId)}");
+
+
+  try {
+    final headers = await getAuthHeaders();
+    final response = await http.get(url, headers: headers,);
+
+    log("CheckResponseCode:${response.statusCode}");
+    if (response.statusCode == 200 ) {
+      final results = json.decode(response.body);
+      return true;
+    }
+    else {
+      print("❌ Failed: ${response.statusCode} - ${response.body}");
+      return false;
+    }
+  } catch (e) {
+    print("❌ Error: $e");
+    return false;
+  }
+}
+
+
+
 

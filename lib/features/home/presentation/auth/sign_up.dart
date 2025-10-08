@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:profio/core/helpers/global_helper.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/theme/app_text.dart';
 import '../../../../providers/locale_provider.dart';
@@ -44,16 +45,7 @@ class _SignupPageState extends State<SignupPage> {
         setState(() => _isLoading = true);
 
         // Show loader dialog
-        showDialog(
-          context: context,
-          barrierDismissible: false,
-          builder: (_) => const Center(
-            child: CircularProgressIndicator(
-              strokeWidth: 4,
-              valueColor: AlwaysStoppedAnimation<Color>(Colors.blueAccent),
-            ),
-          ),
-        );
+        GlobalHelper().progressDialog(context,"Signing In","Signing you in, please wait...");
         final user = await _authService.signUpWithEmailPassword(_emailController.text, _passwordController.text);
         if (user != null) {
          // String? idToken = await user.getIdToken(); //
