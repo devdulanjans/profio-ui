@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../../../core/helpers/global_helper.dart';
 import '../../../../providers/locale_provider.dart';
+import '../../../services/AuthService.dart';
 import '../home/home_page.dart';
 
 class SettingsList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-
+    final AuthService _authService = AuthService();
     void pageNavigatorEngine(String selectedPage) {
       switch (selectedPage) {
         case 'Profile':
@@ -138,6 +140,16 @@ class SettingsList extends StatelessWidget {
           },
         ],
       },
+      {
+        'titleKey': localeProvider.getText(key: 'logout'),
+        'subtopics': [
+          {
+            'key': 'logout_account',
+            'title': localeProvider.getText(key: 'logout_account'),
+            'subTitle': localeProvider.getText(key: ''),
+          },
+        ],
+      },
     ];
 
     return Container(
@@ -165,8 +177,16 @@ class SettingsList extends StatelessWidget {
               ),
               ...setting['subtopics'].map<Widget>((subtopic) {
                 return GestureDetector(
-                  onTap: (){
-                    pageNavigatorEngine(subtopic['title']);
+                  onTap: () async{
+                    if((subtopic['key'] ?? "") == 'logout_account'){
+                      GlobalHelper().progressDialog(context,"Signing out","Signing out, please wait...");
+                      final user = await _authService.signOut();
+                      Navigator.of(context).pop();
+                      Navigator.pushNamedAndRemoveUntil(context, '/login', (Route<dynamic> route) => false);
+                    }else{
+                      pageNavigatorEngine(subtopic['title']);
+                    }
+
                   },
                   child: ListTile(
                     leading: Icon(Icons.arrow_right, color: colorScheme.primary),

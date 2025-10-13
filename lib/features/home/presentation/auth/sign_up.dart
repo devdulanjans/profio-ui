@@ -51,7 +51,8 @@ class _SignupPageState extends State<SignupPage> {
          // String? idToken = await user.getIdToken(); //
          // print("checkToken:${idToken} --- ${user.uid}");
           var result = await userRegister(_emailController.text, user.uid);
-          if(result){
+          if(result != ""){
+            var subScribeLng = await subScribeLanguage(result,"ja"); // assume default setup en and manually adding ja this need to be change based on requirement
             if (!mounted) return;
             Navigator.pop(context); // close loader
             ScaffoldMessenger.of(context).showSnackBar(
@@ -63,7 +64,6 @@ class _SignupPageState extends State<SignupPage> {
               SnackBar(content: Text("❌ Signup register failed")),
             );
           }
-
         } else {
           if (!mounted) return;
           Navigator.pop(context); // close loader
@@ -71,8 +71,6 @@ class _SignupPageState extends State<SignupPage> {
             SnackBar(content: Text("❌ Signup failed")),
           );
         }
-
-
       }
 
 
@@ -175,17 +173,19 @@ class _SignupPageState extends State<SignupPage> {
                   style: themeProvider.isDarkMode ? AppText.bodyMedium.copyWith(color: Colors.green): AppText.bodyMedium.copyWith(color: Colors.green)
               ),
               const SizedBox(height: 16),
-              TextFormField(
-                controller: _nameController,
-                decoration: InputDecoration(
-                  labelText: localeProvider.getText(key: 'full_name'),
-                  prefixIcon: const Icon(Icons.account_circle_rounded),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
+              Visibility(
+                visible: false,
+                child: TextFormField(
+                  controller: _nameController,
+                  decoration: InputDecoration(
+                    labelText: localeProvider.getText(key: 'full_name'),
+                    prefixIcon: const Icon(Icons.account_circle_rounded),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
+                  // validator: (value) => value == null || value.isEmpty ? "Required" : null,
                 ),
-                validator: (value) =>
-                value == null || value.isEmpty ? "Required" : null,
               ),
               const SizedBox(height: 15),
               TextFormField(

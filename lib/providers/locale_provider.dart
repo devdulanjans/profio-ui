@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 
 enum AppLanguage { english, japanese }
+enum AppLanguageSource { en, ja }
+const targetLanguages = ['en','ja'];
 
 class LocaleProvider with ChangeNotifier {
   AppLanguage _currentLanguage = AppLanguage.english;
+
 
   AppLanguage get currentLanguage => _currentLanguage;
 
@@ -14,6 +17,15 @@ class LocaleProvider with ChangeNotifier {
       _currentLanguage = AppLanguage.english;
     }
     notifyListeners();
+  }
+
+  String get currentLanguageCode {
+    switch (_currentLanguage) {
+      case AppLanguage.english:
+        return 'en';
+      case AppLanguage.japanese:
+        return 'ja';
+    }
   }
 
   // Helper to get translated text
@@ -225,6 +237,14 @@ class LocaleProvider with ChangeNotifier {
       'appearance':{
         AppLanguage.english: "Appearance",
         AppLanguage.japanese: "外観",
+      },
+      'logout':{
+        AppLanguage.english: "Log out",
+        AppLanguage.japanese: "ログアウト",
+      },
+      'logout_account':{
+        AppLanguage.english: "Log out of your account",
+        AppLanguage.japanese: "アカウントからログアウトする",
       },
       'mode':{
         AppLanguage.english: "Light Mode",

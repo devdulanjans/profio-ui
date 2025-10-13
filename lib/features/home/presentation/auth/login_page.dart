@@ -16,8 +16,8 @@ class LoginPage extends StatelessWidget {
     final AuthService _authService = AuthService();
     TextEditingController _email = TextEditingController();
     TextEditingController _password = TextEditingController();
-    _email.text = "profio1@gmail.com";
-    _password.text = "abcd1234!";
+    _email.text = "profiotest@gmail.com";
+    _password.text = "abcd1234";
 
     return Scaffold(
       appBar: AppBar(

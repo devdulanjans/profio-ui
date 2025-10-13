@@ -1,10 +1,17 @@
+
+
 import 'package:flutter/material.dart';
 import 'package:flutter_wizard/flutter_wizard.dart';
+import 'package:googleapis_auth/auth_io.dart';
+import 'package:profio/features/services/api_constants.dart';
 import 'package:profio/features/services/api_service.dart';
 
 import '../../../../core/helpers/global_helper.dart';
 import '../../../../core/helpers/permission_handler.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:googleapis/translate/v3.dart' as translate;
+import 'package:provider/provider.dart';
+import '../../../../providers/locale_provider.dart';
 
 /// Step-state classes (must mixin WizardStep)
 class PersonalStepState with WizardStep {}
@@ -60,16 +67,22 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
   List<Map<String, dynamic>> uploadedDocs = [];
   Map<String,dynamic> userDetails = {};
   bool isLoading = true;
+  String appLanguage = "en";
+  late final WizardController _wizardController;
+  int _currentStep = 0;
+  final int _totalSteps = 4; // number of your steps
 
   @override
   void initState() {
     super.initState();
+
     _stepControllers = [
       WizardStepController(step: _personalState),
       WizardStepController(step: _companyState),
       WizardStepController(step: _socialState),
       WizardStepController(step: _documentState),
     ];
+    _wizardController = WizardController(stepControllers: _stepControllers);
     _loadUserDetails();
 
   }
@@ -80,6 +93,7 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
     });
 
     userDetails = await getUserByUUID();
+    await setUserDetails(userDetails);
     setState(() {
       isLoading = false;
     });
@@ -119,74 +133,84 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
 
     super.dispose();
   }
-
   @override
   Widget build(BuildContext context) {
-    // Wrap everything in DefaultWizardController so context.wizardController is available
+    final localeProvider = Provider.of<LocaleProvider>(context);
+    appLanguage = localeProvider.currentLanguageCode;
+    print("CheckCurrentAppLanguage:$appLanguage");
     return GestureDetector(
       onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
       onPanDown: (_) => FocusManager.instance.primaryFocus?.unfocus(),
       onPanStart: (_) => FocusManager.instance.primaryFocus?.unfocus(),
-      child: !isLoading ? DefaultWizardController(
-        stepControllers: _stepControllers,
-        child: Builder(builder: (context) {
-          final wizard = context.wizardController; // extension from the package
+      child: !isLoading ? Column(
+        children: [
+          // Progress bar
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12),
+            child: LinearProgressIndicator(
+              minHeight: 6,
+              value: (_currentStep + 1) / _totalSteps,
+            ),
+          ),
 
-          return Column(
-            children: [
-              const SizedBox(height: 12),
-              // Small progress indicator (optional)
-              StreamBuilder<int>(
-                stream: wizard.indexStream,
-                initialData: wizard.index,
-                builder: (ctx, snap) {
-                  final idx = snap.data ?? 0;
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                    child: LinearProgressIndicator(
-                      value:
-                      (idx + 1) / (wizard.stepCount == 0 ? 1 : wizard.stepCount),
-                      minHeight: 6,
-                    ),
-                  );
-                },
-              ),
-              const SizedBox(height: 12),
-              // The wizard content
-              Expanded(
-                child: Wizard(
-                  stepBuilder: (ctx, state) {
-                    // state is the object you passed into WizardStepController(step: ...)
-                    if (state is PersonalStepState) {
-                      return _buildPersonalDetails();
-                    } else if (state is CompanyStepState) {
-                      return _buildCompanyDetails();
-                    } else if (state is SocialStepState) {
-                      return _buildSocialMediaDetails();
-                    } else if (state is DocumentStepState) {
-                      return _buildDocumentDetails();
-                    }
-                    return const SizedBox.shrink();
-                  },
+          // Step content
+          Expanded(
+            child: IndexedStack(
+              index: _currentStep,
+              children: [
+                _buildPersonalDetails(),
+                _buildCompanyDetails(),
+                _buildSocialMediaDetails(),
+                _buildDocumentDetails(), // includes image picker
+              ],
+            ),
+          ),
+
+          // Action buttons
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () {
+                      if (_currentStep == 0) {
+                        Navigator.of(context).pop(); // go back to previous screen
+                      } else {
+                        setState(() {
+                          _currentStep -= 1; // go back one step in wizard
+                        });
+                      }
+                    },
+                    child: const Text('Back'),
+                  ),
                 ),
-              ),
-
-              // Action bar (Back / Next / Save)
-              Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: _buildActionBar(context),
-              ),
-            ],
-          );
-        }),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: _currentStep == _totalSteps - 1
+                        ? updateProfile
+                        : () {
+                      if (_validateCurrentStep(_currentStep)) {
+                        setState(() => _currentStep += 1);
+                      }
+                    },
+                    child: Text(_currentStep == _totalSteps - 1 ? 'Save' : 'Next'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       )
           :Center(
-          child: SizedBox(
-              height: 30,
-              width: 30,
-              child: CircularProgressIndicator())),
+              child: SizedBox(
+                  height: 30,
+                  width: 30,
+                  child: CircularProgressIndicator())),
     );
   }
+
 
 
   void _removeLink(int index) {
@@ -216,16 +240,16 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
             ),
             const SizedBox(height: 8),
             GestureDetector(
-              onTap: () async{
+              onTap: () async {
                 final hasPermission = await PermissionHandler.requestPermissionBrowseFile(context);
 
                 if (!hasPermission) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(content: Text("⚠️ Permission denied. Please enable it from settings.")),
                   );
-
                   return;
                 }
+
                 final result = await FilePicker.platform.pickFiles(
                   type: FileType.custom,
                   allowedExtensions: ['jpg', 'jpeg', 'png'],
@@ -234,12 +258,11 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
 
                 if (result != null && result.files.isNotEmpty) {
                   final file = result.files.first;
-
                   final fileSizeInMB = file.size / (1024 * 1024);
 
                   if (fileSizeInMB > 20) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text("⚠️  File Size exceeded.")),
+                      SnackBar(content: Text("⚠️ File Size exceeded.")),
                     );
                     return;
                   }
@@ -247,8 +270,6 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
                   setState(() {
                     _pickedFile = file;
                   });
-
-
                 }
               },
               child: Container(
@@ -258,21 +279,7 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
                   shape: BoxShape.circle,
                   border: Border.all(color: Colors.green, width: 1.5),
                 ),
-                child: _pickedFile != null && _isImageFile(_pickedFile!.name)
-                    ? ClipOval(
-                  child: Image.memory(
-                    _pickedFile!.bytes!,
-                    fit: BoxFit.cover,
-                    width: 60,
-                    height: 60,
-                  ),
-                ) : const Center(
-                  child: Icon(
-                    Icons.person_outline,
-                    size: 28,
-                    color: Colors.black54,
-                  ),
-                ),
+                child: _buildProfileImage(),
               ),
             ),
           ],
@@ -284,6 +291,43 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
         _textField("Personal Address*", uAddressController,type: TextInputType.streetAddress),
         _textField("Personal Website URL*", uWebSiteController,type: TextInputType.twitter,isLastField: true),
       ]),
+    );
+  }
+
+
+  Widget _buildProfileImage() {
+    if (_pickedFile != null && _isImageFile(_pickedFile!.name)) {
+      return ClipOval(
+        child: Image.memory(
+          _pickedFile!.bytes!,
+          fit: BoxFit.cover,
+          width: 60,
+          height: 60,
+        ),
+      );
+    } else if (userDetails['profileImageURL'] != null && (userDetails['profileImageURL'] ?? "") != "") {
+      return ClipOval(
+        child: Image.network(
+          fetchImage(userDetails['_id'] ?? "","PROFILE", userDetails['profileImageURL']),
+          fit: BoxFit.cover,
+          width: 60,
+          height: 60,
+          errorBuilder: (context, error, stackTrace) => _buildDefaultIcon(),
+        ),
+      );
+    } else {
+      return _buildDefaultIcon();
+    }
+  }
+
+  Widget _buildDefaultIcon() {
+    print("CheckProfileImage:${fetchImage(userDetails['_id'] ?? "","PROFILE", userDetails['profileImageURL'])}");
+    return const Center(
+      child: Icon(
+        Icons.person_outline,
+        size: 28,
+        color: Colors.black54,
+      ),
     );
   }
 
@@ -629,7 +673,7 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
   }
 
   bool _validatePersonalDetails() {
-    // return true;
+    return true;
     if (uNameController.text.trim().isEmpty ||
         uEmailController.text.trim().isEmpty ||
         uPhoneController.text.trim().isEmpty || uAddressController.text.trim().isEmpty || uWebSiteController.text.trim().isEmpty) {
@@ -642,7 +686,7 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
   }
 
   bool _validateCompanyDetails() {
-   // return true;
+   return true;
     if (cNameController.text.trim().isEmpty ||
         cJobTitleEmailController.text.trim().isEmpty ||
         cEmailController.text.trim().isEmpty || cPhoneController.text.trim().isEmpty) {
@@ -655,7 +699,7 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
   }
 
   bool _validateSocialMediaDetails() {
-    //return true;
+    return true;
     if (sWhatsappController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('⚠️ Please fill in all required social media details.')),
@@ -669,21 +713,27 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
     return true;
   }
 
+
+
   void updateProfile() async{
     String userId = "";
     String userImageUrl = "";
-    List<Map<String,dynamic>> documents = [];
+    var ln = appLanguage;
     //upload profile picture
     GlobalHelper().progressDialog(context,"Profile update","Profile updating, please wait...");
+    if(userDetails != {}){
+      userId = userDetails['_id'] ?? "";
+      print('UserId:${userId}');
+    }
     if((_pickedFile?.path ?? "") != ""){
-      if(userDetails != {}){
-        userId = userDetails['_id'] ?? "";
-      }
       var preSignedUrl = await getPreSignedUrl(userId,_pickedFile?.extension ?? "",);
-      if(preSignedUrl != {}){
+      if((preSignedUrl ?? {}) != {}){
         userImageUrl = preSignedUrl?['fileURL'] ?? "";
         var result = await uploadFileToPreSignedUrl(preSignedUrl?['uploadUrl'] ?? "",_pickedFile ?? PlatformFile(name: "", size: 1));
         print("ProfileImageUploaded: ${result}");
+      }else{
+        updateResult(1); // profile image upload error
+        return;
       }
 
     }
@@ -694,18 +744,25 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
           var uploadDoc = uploadedDocs[i];
           PlatformFile tempDocument = uploadDoc['file'];
           String title = uploadDoc['title'];
+          dynamic docRequest = {
+            "userId":userId,
+            "fileExtension":tempDocument.extension ?? "",
+            "title": {
+              ln: title,
+            },
+            "type":"DOCUMENT"
+          };
+          final documentRequest = await translateAndBuildRequest(docRequest, ln, targetLanguages,"document");
+
           if(tempDocument.path != ""){
-            var preSignedUrl = await getPreSignedUrl(userId,tempDocument.extension ?? "",title: title,language: "en");
-            if(preSignedUrl != {}){
-              var tempDocumentUrl = preSignedUrl?['fileURL'] ?? "";
+            var preSignedUrl = await getPreSignedUrl(userId,tempDocument.extension ?? "",type: 2,docRequest: documentRequest);
+            if((preSignedUrl ?? {}) != {}){
               var result = await uploadFileToPreSignedUrl(preSignedUrl?['uploadUrl'] ?? "",_pickedFile ?? PlatformFile(name: "", size: 1));
               print("DocumentImageUploaded: ${result}");
-              if(result){
-                documents.add({
-                  "title": title,
-                  "file": tempDocumentUrl,
-                });
-              }
+            }
+            else{
+              updateResult(2); // document image upload error
+              return;
             }
           }
 
@@ -715,49 +772,277 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
     }
 
     //update the profile with details
-    // Function to build the API data
-    Map<String, dynamic> apiRequest = {
-        "id": userId,
-        "name": uNameController.text.toString().trim(),
-        "phoneNumber": uNameController.text.toString().trim(),
-        "personalAddress": uNameController.text.toString().trim(),
-        "personalWebsite": uNameController.text.toString().trim(),
-        "companyName": uNameController.text.toString().trim(),
-        "jobTitle": uNameController.text.toString().trim(),
-        "companyEmail": uNameController.text.toString().trim(),
-        "companyPhoneNumber": uNameController.text.toString().trim(),
-        "companyAddress": uNameController.text.toString().trim(),
-        "companyWebsite": uNameController.text.toString().trim(),
-        "whatsappNumber": uNameController.text.toString().trim(),
-        "facebookUrl": uNameController.text.toString().trim(),
-        "instagramUrl": uNameController.text.toString().trim(),
-        "linkedInUrl": uNameController.text.toString().trim(),
-        "tikTokUrl": uNameController.text.toString().trim(),
-        "youtubeUrl": uNameController.text.toString().trim(),
-        "otherLinks": otherLinks.map((link) => {
-          "title": link["title"].text,
-          "url": link["url"].text,
-        }).toList(),
-        "documents": documents.map((doc) => {
-          "title": doc["title"].text,
-          "url": doc["url"].text,
-        }).toList(),
-        "language": "en",
-      };
 
+    Map<String, dynamic> apiRequest = {
+      "id": userId,
+
+      "name": {
+        ln: uNameController.text.toString().trim(),
+      },
+      "personalAddress": {
+        ln: uAddressController.text.toString().trim(),
+      },
+      "companyName": {
+        ln: cNameController.text.toString().trim(),
+      },
+      "jobTitle": {
+        ln: cJobTitleEmailController.text.toString().trim(),
+      },
+      "companyAddress": {
+        ln: cAddressController.text.toString().trim(),
+      },
+
+      // ✅ Static (non-translatable) fields as-is
+      "phoneNumber": uPhoneController.text.toString().trim(),
+      "personalWebsite": uWebSiteController.text.toString().trim(),
+      "companyEmail": cEmailController.text.toString().trim(),
+      "companyPhoneNumber": cPhoneController.text.toString().trim(),
+      "companyWebsite": cWebsiteController.text.toString().trim(),
+      "whatsappNumber": sWhatsappController.text.toString().trim(),
+      "facebookUrl": sFacebookController.text.toString().trim(),
+      "instagramUrl": sInstagramController.text.toString().trim(),
+      "linkedInUrl": sLinkedinController.text.toString().trim(),
+      "tikTokUrl": sTiktokController.text.toString().trim(),
+      "youtubeUrl": sYoutubeController.text.toString().trim(),
+
+      // ✅ otherLinks with translatable 'title'
+      "otherLinks": otherLinks.map((link) => {
+        "title": {
+          ln: link["title"].toString().trim(),
+        },
+        "url": link["url"].toString().trim(),
+      }).toList(),
+    };
+
+    final profileRequest = await translateAndBuildRequest(apiRequest, ln, targetLanguages,"profile");
 
     //update the api
-    var profileUpdateResult = await updateUserDetails(apiRequest,userId);
+    var profileUpdateResult = await updateUserDetails(profileRequest,userId);
+
     if(profileUpdateResult){
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Profile Update Successfully ✅')),);
-    }else{
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Profile Update Failed ❌')),);
+      updateResult(4); // document image upload error
+      return;
     }
+    else{
+      updateResult(3); // document image upload error
+      return;
+    }
+  }
+
+  void updateResult(int type){
+    String message = "";
+
+    switch (type) {
+      case 1:
+        message = 'Profile image upload failed ❌';
+        break;
+      case 2:
+        message = 'Documents Upload Failed ❌';
+        break;
+      case 3:
+        message = 'Profile Update Failed ❌';
+        break;
+      case 4:
+        message = 'Profile Update Successfully ✅';
+        break;
+      default:
+        message = "Something went wrong,Please try again.";
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)),);
     Navigator.of(context)..pop()..pop();
   }
 
 
+
+  Future<Map<String, dynamic>> translateAndBuildRequest(
+      Map<String, dynamic> originalData,
+      String inputLang,
+      List<String> targetLanguages,String translateFieldType) async {
+
+    // Step 1: Authenticate with Google Cloud using service account
+    final serviceAccountJson = {};
+    final serviceAccountCredentials = ServiceAccountCredentials.fromJson(serviceAccountJson);
+    final parent = 'projects/profio-473307/locations/global';
+
+    final client = await clientViaServiceAccount(serviceAccountCredentials, [translate.TranslateApi.cloudTranslationScope],);
+    final api = translate.TranslateApi(client);
+
+
+    Map<String, dynamic> translatedData = Map.from(originalData);
+
+    final translatableFields = _getTranslatableFieldsForType(translateFieldType);
+
+
+    for (var field in translatableFields) {
+      if (originalData[field] is Map) {
+        String originalText = originalData[field][inputLang];
+
+        for (var lang in targetLanguages) {
+          if (lang != inputLang) {
+            final translatedText = await _googleTranslateText(api, parent, originalText, inputLang, lang);
+            translatedData[field][lang] = translatedText;
+          }
+        }
+      }
+
+      // For list of objects like otherLinks
+      if (field == 'otherLinks' && originalData[field] is List) {
+        List<dynamic> links = originalData[field];
+        for (int i = 0; i < links.length; i++) {
+          var link = links[i];
+          if (link['title'] is Map) {
+            String originalText = link['title'][inputLang];
+            for (var lang in targetLanguages) {
+              if (lang != inputLang) {
+                final translatedText = await _googleTranslateText(api, parent, originalText, inputLang, lang);
+                link['title'][lang] = translatedText;
+              }
+            }
+          }
+        }
+      }
+    }
+
+    client.close();
+    return translatedData;
+  }
+
+
+  Future<String> _googleTranslateText(
+      translate.TranslateApi api,
+      String parent,
+      String text,
+      String sourceLang,
+      String targetLang) async {
+
+    final request = translate.TranslateTextRequest(
+      contents: [text],
+      sourceLanguageCode: sourceLang,
+      targetLanguageCode: targetLang,
+      mimeType: 'text/plain',
+    );
+
+    final response = await api.projects.locations.translateText(request, parent);
+
+    return response.translations?.first.translatedText ?? '[Translation failed]';
+  }
+
+  List<String> _getTranslatableFieldsForType(String type) {
+    switch (type) {
+      case 'profile':
+        return [
+          "name",
+          "jobTitle",
+          "personalAddress",
+          "companyName",
+          "companyAddress",
+          "otherLinks",
+        ];
+      case 'document':
+        return ["title"];
+      case 'other': //what ever we need
+        return ["title", "description"];
+      default:
+        return []; // Fallback for unknown types
+    }
+  }
+
+
+  Map<String, dynamic> getLocalizedData(Map<String, dynamic> userData, String languageCode) {
+    Map<String, dynamic> localizedData = {};
+
+    // Localize fields that have translations for 'en' and 'ja'
+    localizedData['name'] = userData['name'][languageCode] ?? userData['name']['en'];  // Default to 'en' if the specified language doesn't exist
+    localizedData['personalAddress'] = userData['personalAddress'][languageCode] ?? userData['personalAddress']['en'];
+    localizedData['companyName'] = userData['companyName'][languageCode] ?? userData['companyName']['en'];
+    localizedData['jobTitle'] = userData['jobTitle'][languageCode] ?? userData['jobTitle']['en'];
+    localizedData['otherLinks'] = userData['otherLinks']
+        .map((link) => {
+      'title': link['title'][languageCode] ?? link['title']['en'],
+      'url': link['url'],
+    })
+        .toList();
+
+    // Extract other non-translatable fields directly
+    localizedData['email'] = userData['email'];
+    localizedData['phoneNumber'] = userData['phoneNumber'];
+    localizedData['personalWebsite'] = userData['personalWebsite'];
+    localizedData['companyEmail'] = userData['companyEmail'];
+    localizedData['companyPhoneNumber'] = userData['companyPhoneNumber'];
+    localizedData['companyAddress'] = userData['companyAddress'][languageCode] ?? userData['companyAddress']['en'];
+    localizedData['companyWebsite'] = userData['companyWebsite'];
+    localizedData['profileImageURL'] = userData['profileImageURL'];
+
+    return localizedData;
+  }
+
+
+
+
+  ///test method
+
+  void testTranslate() async {
+    final inputLang = 'ja'; // You entered in Japanese
+    final targetLangs = ['en'];
+
+    final inputData = {
+      "name": {
+        "ja": "ジョン・ドウ"
+      },
+      "jobTitle": {
+        "ja": "ソフトウェアエンジニア"
+      },
+      "instagramUrl": "https://instagram.com/johndoe",
+      "otherLinks": [
+        {
+          "title": {
+            "ja": "ポートフォリオ"
+          },
+          "url": "https://portfolio.johndoe.com"
+        }
+      ]
+    };
+
+    // final output = await translateAndBuildRequest(inputData, inputLang, targetLangs);
+
+
+    // print("CheckCurrentAppLanguage:$language");
+  }
+
+  Future<void> setUserDetails(Map<String, dynamic> userDetails) async {
+    var data =  getLocalizedData(userDetails,appLanguage);
+    if(data != {} ) {
+      uNameController.text = data['name'] ?? "";
+      uEmailController.text = data['email'] ?? "";
+      uAddressController.text = data['personalAddress'] ?? "";
+      uPhoneController.text = (data['phoneNumber'] ?? "").toString();
+      uWebSiteController.text = data['personalWebsite'] ?? "";
+
+      cNameController.text = data['companyName'] ?? "";
+      cJobTitleEmailController.text = data['jobTitle'] ?? "";
+      cEmailController.text = data['companyEmail'] ?? "";
+      cPhoneController.text = (data['companyPhoneNumber'] ?? "").toString();
+      cAddressController.text = data['companyAddress'] ?? "";
+      cWebsiteController.text = data['companyWebsite'] ?? "";
+
+      sWhatsappController.text = (data['whatsappNumber'] ?? "").toString();
+      sFacebookController.text = data['facebookUrl'] ?? "";
+      sInstagramController.text = data['instagramUrl'] ?? "";
+      sLinkedinController.text = (data['linkedInUrl'] ?? "").toString();
+      sTiktokController.text = data['tikTokUrl'] ?? "";
+      sYoutubeController.text = data['youtubeUrl'] ?? "";
+
+      otherLinks = List<Map<String, dynamic>>.from(data['otherLinks'] ?? []);
+
+
+      print("CheckUserData:${data}");
+    }
+  }
+
+
 }
+
 
 bool _isImageFile(String fileName) {
   final extension = fileName.toLowerCase();
