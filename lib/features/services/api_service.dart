@@ -373,8 +373,8 @@ Future<String> shareUserTemplate(String userId,String templateId) async {
   }
 }
 
-Future<bool> deleteSelectedTemplate(String templatedId) async {
-  final url = Uri.parse("$baseUrl${deselectTemplate(templatedId)}");
+Future<bool> deleteSelectedTemplate(String userId,String templatedId) async {
+  final url = Uri.parse("$baseUrl${deselectTemplate(userId,templatedId)}");
 
   try {
     final headers = await getAuthHeaders();

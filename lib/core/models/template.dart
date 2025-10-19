@@ -10,6 +10,7 @@ class Template {
   final String? htmlContent;
   final String? templateCode;
   bool? isAlreadySelected;
+  String? userTemplateId;
 
   Template({
     this.id,
@@ -22,7 +23,8 @@ class Template {
      this.updatedAt,
      this.htmlContent,
      this.templateCode,
-    this.isAlreadySelected
+    this.isAlreadySelected,
+    this.userTemplateId
   });
 
   // Factory constructor to create Template from JSON
@@ -38,6 +40,7 @@ class Template {
       updatedAt: json['updated_at'] ?? "1970-01-01T00:00:00.000Z",  // Default timestamp if null
       htmlContent: json['html_content'] ?? "",  // Default empty string if null
       templateCode: json['template_code'] ?? "UNKNOWN",  // Default "UNKNOWN" if null
+      userTemplateId: json['userTemplateId'] ?? ""
     );
   }
 

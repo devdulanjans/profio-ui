@@ -16,5 +16,5 @@ const putSubscribeLanguage = "/api/users/language/subscribe";
 const postShareTemplate = "/api/user-templates/share";
 String deleteDocument (String userId,String documentId) =>"/api/users/document/$userId/DOCUMENT/$documentId";
 const patchUpdateDocumentTitle = "/api/users/document/title";
-String deselectTemplate (String templateId) =>"/api/user-templates/$templateId";
+String deselectTemplate (String userID,String templateId) =>"/api/user-templates/$userID/$templateId";
 

@@ -73,6 +73,7 @@ class _AllTemplatesPageState extends State<AllTemplatesPage> {
           if ((matchingUserTemplate.id ?? "") != "") {
             print("CheckMatchingTempalte: ${matchingUserTemplate.name}");
             allTemplate.isAlreadySelected = true;
+            // allTemplate.userTemplateId = matchingUserTemplate.userTemplateId ?? "";
           }
 
           // Return the modified or unchanged allTemplate
@@ -136,7 +137,8 @@ class _AllTemplatesPageState extends State<AllTemplatesPage> {
                           visible: (template.isAlreadySelected ?? false),
                           child: SlidableAction(
                             onPressed: (c) async{
-                              _showConfirmationDialogDeselectTemplate(context,template.id ?? "");
+                              print("CheckUserDeselectTemplatedId:${template.userTemplateId}");
+                              _showConfirmationDialogDeselectTemplate(context,template.id ?? "",userDetails["_id"] ?? "");
                             },
                             backgroundColor: Colors.blue,
                             foregroundColor: Colors.white,
@@ -363,7 +365,7 @@ class _AllTemplatesPageState extends State<AllTemplatesPage> {
 
   }
 
-  void _showConfirmationDialogDeselectTemplate(BuildContext context,String templateId) {
+  void _showConfirmationDialogDeselectTemplate(BuildContext context,String templateId,String userId) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -387,7 +389,7 @@ class _AllTemplatesPageState extends State<AllTemplatesPage> {
               GlobalHelper().progressDialog(scaffoldContext, getText("template_deselect"), getText("template_deselecting_wait"));
 
               // Generate the URL
-              bool result = await deleteSelectedTemplate(templateId);
+              bool result = await deleteSelectedTemplate(userId,templateId);
 
               // Close the progress dialog
               Navigator.of(scaffoldContext).pop();
