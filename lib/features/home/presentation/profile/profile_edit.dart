@@ -1,17 +1,21 @@
 
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_wizard/flutter_wizard.dart';
 import 'package:googleapis_auth/auth_io.dart';
 import 'package:profio/features/services/api_constants.dart';
 import 'package:profio/features/services/api_service.dart';
 
+import '../../../../core/constants/app_strings.dart';
 import '../../../../core/helpers/global_helper.dart';
 import '../../../../core/helpers/permission_handler.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:googleapis/translate/v3.dart' as translate;
 import 'package:provider/provider.dart';
 import '../../../../providers/locale_provider.dart';
+import 'package:flutter_slidable/flutter_slidable.dart';
+
 
 /// Step-state classes (must mixin WizardStep)
 class PersonalStepState with WizardStep {}
@@ -71,6 +75,8 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
   late final WizardController _wizardController;
   int _currentStep = 0;
   final int _totalSteps = 4; // number of your steps
+  late LocaleProvider localeProvider;
+  late VoidCallback listener;
 
   @override
   void initState() {
@@ -84,8 +90,22 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
     ];
     _wizardController = WizardController(stepControllers: _stepControllers);
     _loadUserDetails();
+    listener = () {
+      if (mounted) {
+        appLanguage = localeProvider.currentLanguageCode ?? "";
+        print("LanguageChanged:${appLanguage} -- ${localeProvider.currentLanguage}");
+        _refreshUserDetails();
+      }
+    };
 
+    // ✅ Safe way to access Provider after the first frame
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      localeProvider = Provider.of<LocaleProvider>(context, listen: false);
+      localeProvider.addListener(listener);
+    });
   }
+
+
 
   Future<void> _loadUserDetails() async {
     setState(() {
@@ -93,6 +113,16 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
     });
 
     userDetails = await getUserByUUID();
+    await setUserDetails(userDetails);
+    setState(() {
+      isLoading = false;
+    });
+  }
+
+  Future<void> _refreshUserDetails() async {
+    setState(() {
+      isLoading = true;
+    });
     await setUserDetails(userDetails);
     setState(() {
       isLoading = false;
@@ -132,11 +162,12 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
     _pickedDocumentFile = null;
 
     super.dispose();
+    localeProvider.removeListener(listener);
   }
+
+
   @override
   Widget build(BuildContext context) {
-    final localeProvider = Provider.of<LocaleProvider>(context);
-    appLanguage = localeProvider.currentLanguageCode;
     print("CheckCurrentAppLanguage:$appLanguage");
     return GestureDetector(
       onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
@@ -182,7 +213,7 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
                         });
                       }
                     },
-                    child: const Text('Back'),
+                    child: Text(localeProvider.getText(key: 'back'),),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -195,7 +226,7 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
                         setState(() => _currentStep += 1);
                       }
                     },
-                    child: Text(_currentStep == _totalSteps - 1 ? 'Save' : 'Next'),
+                    child: Text(_currentStep == _totalSteps - 1 ? localeProvider.getText(key: 'save') : localeProvider.getText(key: 'next')),
                   ),
                 ),
               ],
@@ -225,13 +256,12 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        const Text("Personal Details", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold,color: Colors.black)),
+        Text(localeProvider.getText(key: 'personal_details'), style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold,color: Colors.black)),
         const SizedBox(height: 16),
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              "Profile Photo*",
+             Text(getText("profile_photo"),
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
@@ -245,7 +275,7 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
 
                 if (!hasPermission) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text("⚠️ Permission denied. Please enable it from settings.")),
+                    SnackBar(content: Text("⚠️ ${getText("permission_denied")}")),
                   );
                   return;
                 }
@@ -262,7 +292,7 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
 
                   if (fileSizeInMB > 20) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text("⚠️ File Size exceeded.")),
+                      SnackBar(content: Text("⚠️ ${getText("file_size_exceeded")}")),
                     );
                     return;
                   }
@@ -285,11 +315,11 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
           ],
         ),
         SizedBox(height: 20,),
-        _textField("Full Name*",uNameController ),
-        _textField("Personal Email Address*", uEmailController,type: TextInputType.emailAddress),
-        _textField("Phone Number*", uPhoneController,type: TextInputType.phone),
-        _textField("Personal Address*", uAddressController,type: TextInputType.streetAddress),
-        _textField("Personal Website URL*", uWebSiteController,type: TextInputType.twitter,isLastField: true),
+        _textField(getText("full_name"),uNameController ),
+        _textField(getText("personal_email"), uEmailController,type: TextInputType.emailAddress),
+        _textField(getText("phone_number"), uPhoneController,type: TextInputType.phone),
+        _textField(getText("personal_address"), uAddressController,type: TextInputType.streetAddress),
+        _textField(getText("personal_website"), uWebSiteController,type: TextInputType.twitter,isLastField: true),
       ]),
     );
   }
@@ -338,15 +368,15 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        const Text("Company Details",
+         Text(getText("company_details"),
             style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold,color: Colors.black)),
         const SizedBox(height: 16),
-        _textField("Company Name*", cNameController),
-        _textField("Job Title*", cJobTitleEmailController),
-        _textField("Company Email Address*", cEmailController,type: TextInputType.emailAddress),
-        _textField("Company Phone Number*", cPhoneController,type: TextInputType.phone),
-        _textField("Company Address", cAddressController,type: TextInputType.streetAddress),
-        _textField("Company Website URL", cWebsiteController,type: TextInputType.twitter,isLastField: true),
+        _textField(getText("company_name"), cNameController),
+        _textField(getText("job_title"), cJobTitleEmailController),
+        _textField(getText("company_email"), cEmailController,type: TextInputType.emailAddress),
+        _textField(getText("company_phone"), cPhoneController,type: TextInputType.phone),
+        _textField(getText("company_address"), cAddressController,type: TextInputType.streetAddress),
+        _textField(getText("company_website"), cWebsiteController,type: TextInputType.twitter,isLastField: true),
       ]),
     );
   }
@@ -358,14 +388,14 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        const Text("Social Media", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold,color: Colors.black)),
+         Text(getText("social_media"), style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold,color: Colors.black)),
         const SizedBox(height: 16),
-        _textField("WhatsApp*", sWhatsappController),
-        _textField("Facebook", sFacebookController,type: TextInputType.twitter),
-        _textField("Instagram", sInstagramController,type: TextInputType.twitter),
-        _textField("Linkedin", sLinkedinController,type: TextInputType.twitter),
-        _textField("Youtube", sYoutubeController,type: TextInputType.twitter,isLastField: true),
-        const Text("Other links", style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500,color: Colors.black)),
+        _textField(getText("whatsapp"), sWhatsappController),
+        _textField(getText("facebook"), sFacebookController,type: TextInputType.twitter),
+        _textField(getText("instagram"), sInstagramController,type: TextInputType.twitter),
+        _textField(getText("linkedin"), sLinkedinController,type: TextInputType.twitter),
+        _textField(getText("youtube"), sYoutubeController,type: TextInputType.twitter,isLastField: true),
+         Text(getText("other_links"), style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500,color: Colors.black)),
         Row(
           mainAxisAlignment: MainAxisAlignment.end,
           children: [
@@ -373,12 +403,12 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
               onPressed: () {
                 if(sOtherLinkTitleController.text.isEmpty){
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('⚠️ Please enter the other link title.')),
+                    SnackBar(content: Text('⚠️ ${getText("enter_other_link_title")}')),
                   );
                 }
                 else if(sOtherLinkController.text.isEmpty){
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('⚠️ Please enter the other link.')),
+                    SnackBar(content: Text('⚠️  ${getText("enter_other_link")}')),
                   );
                 }
                 else{
@@ -401,8 +431,8 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
             ),
           ],
         ),
-        _textField("Enter other link title", sOtherLinkTitleController,type: TextInputType.text),
-        _textField("Enter other link url", sOtherLinkController,type: TextInputType.twitter,isLastField: true),
+        _textField(getText("enter_other_link_title"), sOtherLinkTitleController,type: TextInputType.text),
+        _textField(getText("enter_other_link"), sOtherLinkController,type: TextInputType.twitter,isLastField: true),
         SizedBox(height: 20,),
         ListView.builder(
           shrinkWrap: true,
@@ -433,90 +463,102 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
   // STEP 4: DOCUMENT DETAILS
   // ============================
   Widget _buildDocumentDetails() {
+    int? _activeSlideIndex;
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        const Text("Document Upload",
+         Text(getText("enter_other_link_title"),
             style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold,color: Colors.black)),
         const SizedBox(height: 16),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            /// Expanded Text Field
-            Expanded(
-              child: _textField("Document Title", documentController, isLastField: true),
-            ),
+        Visibility(
+          visible: isDocumentShouldVisible(uploadedDocs.length),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              /// Expanded Text Field
+              Expanded(
+                child: _textField(getText("document_title"), documentController, isLastField: true),
+              ),
 
-            const SizedBox(width: 12),
+              const SizedBox(width: 12),
 
-            /// Upload Icon (larger size)
-            IconButton(
-              iconSize: 32, // Increase icon size
-              tooltip: 'Select File',
-              icon: const Icon(Icons.upload_file, color: Colors.green),
-              onPressed: () async {
-                final hasPermission = await PermissionHandler.requestPermissionBrowseFile(context);
-
-                if (!hasPermission) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text("⚠️ Permission denied. Please enable it from settings.")),
-                  );
-                  return;
-                }
-
-                final result = await FilePicker.platform.pickFiles(
-                  type: FileType.custom,
-                  allowedExtensions: ['jpg', 'jpeg', 'png'],
-                  withData: true,
-                );
-
-                if (result != null && result.files.isNotEmpty) {
-                  final file = result.files.first;
-                  final fileSizeInMB = file.size / (1024 * 1024);
-
-                  if (fileSizeInMB > 20) {
+              /// Upload Icon (larger size)
+              IconButton(
+                iconSize: 32, // Increase icon size
+                tooltip: getText("select_file"),
+                icon: const Icon(Icons.upload_file, color: Colors.green),
+                onPressed: () async {
+                  if(uploadedDocs.length == documentUploadLimit()){
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text("⚠️ File Size exceeded.")),
+                       SnackBar(content: Text("⚠️ ${getText("document_upload_limit")}")),
                     );
-                    return;
+                  }else{
+                    final hasPermission = await PermissionHandler.requestPermissionBrowseFile(context);
+
+                    if (!hasPermission) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                         SnackBar(content: Text("⚠️${getText("permission_denied")}")),
+                      );
+                      return;
+                    }
+
+                    final result = await FilePicker.platform.pickFiles(
+                      type: FileType.custom,
+                      allowedExtensions: ['jpg', 'jpeg', 'png'],
+                      withData: true,
+                    );
+
+                    if (result != null && result.files.isNotEmpty) {
+                      final file = result.files.first;
+                      final fileSizeInMB = file.size / (1024 * 1024);
+
+                      if (fileSizeInMB > 20) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                           SnackBar(content: Text("⚠️ ${getText("file_size_exceeded")}")),
+                        );
+                        return;
+                      }
+
+                      setState(() {
+                        _pickedDocumentFile = result;
+                      });
+                    }
                   }
 
-                  setState(() {
-                    _pickedDocumentFile = result;
-                  });
-                }
-              },
-            ),
+                },
+              ),
 
-            /// Add Icon (larger size)
-            IconButton(
-              iconSize: 32, // Increase icon size
-              tooltip: 'Add Document',
-              icon: const Icon(Icons.add_circle, color: Colors.green),
-              onPressed: () {
-                 if (documentController.text.isEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('⚠️ Please enter the document title.')),
-                );
-                }
-                else if ((_pickedDocumentFile?.files ?? []).isEmpty) {
+              /// Add Icon (larger size)
+              IconButton(
+                iconSize: 32, // Increase icon size
+                tooltip: getText("add_document"),
+                icon: const Icon(Icons.add_circle, color: Colors.green),
+                onPressed: () {
+                   if (documentController.text.isEmpty) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('⚠️ Please select the document.')),
+                   SnackBar(content: Text('⚠️ ${getText("enter_document_title")}')),
                   );
-                }
-                else {
-                  setState(() {
-                    uploadedDocs.add({
-                      "title": documentController.text,
-                      "file": _pickedDocumentFile?.files.first,
+                  }
+                  else if ((_pickedDocumentFile?.files ?? []).isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                       SnackBar(content: Text('⚠️ ${getText("select_document")}')),
+                    );
+                  }
+                  else {
+                    setState(() {
+                      uploadedDocs.add({
+                        "title": documentController.text,
+                        "file": _pickedDocumentFile?.files.first,
+                        "isUploaded": false
+                      });
+                      documentController.clear();
+                      _pickedDocumentFile = null;
                     });
-                    documentController.clear();
-                    _pickedDocumentFile = null;
-                  });
-                }
-              },
-            ),
-          ],
+                  }
+                },
+              ),
+            ],
+          ),
         ),
 
         ListView.builder(
@@ -525,24 +567,147 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
           physics: NeverScrollableScrollPhysics(),
           itemBuilder: (context, index) {
             final doc = uploadedDocs[index];
-            final PlatformFile file = doc["file"];
+            final PlatformFile file = doc["file"] ?? PlatformFile(name: "", size: 1);
             final String title = doc["title"];
+            final String url = doc["url"] ?? "";
+            final documentImage =  fetchImage(userDetails['_id'] ?? "","DOCUMENT",url);
+            final bool isUploaded = doc["isUploaded"] ?? false;
+            final String documentId = doc['id'] ?? "";
+
+            print("CheckDocumentImage:${documentImage}");
 
             return Card(
-              child: ListTile(
-                leading: Icon(Icons.insert_drive_file),
-                title: Text(title),
-                subtitle: Text("${file.name} • ${(file.size / 1024).toStringAsFixed(2)} KB"),
-                trailing: IconButton(
-                  icon: Icon(Icons.delete, color: Colors.red),
-                  onPressed: () {
-                    setState(() {
-                      uploadedDocs.removeAt(index);
-                    });
-                  },
+              child: SlidableAutoCloseBehavior(
+                closeWhenTapped: true,
+                child: Slidable(
+                  dragStartBehavior: DragStartBehavior.start,
+                  closeOnScroll: true,
+                  useTextDirection: true,
+                  direction: Axis.horizontal,
+                  key: ValueKey(index),
+                  // Slide actions (right side)
+                  endActionPane: ActionPane(
+                    motion: const DrawerMotion(), // smooth motion effect
+                    children: [
+                      Visibility(
+                        visible:isUploaded,
+                        child: SlidableAction(
+                          onPressed: (c) async{
+                            var dContext = c;
+                           String newTitle = await _showEditDialog(dContext,title);
+                           if(newTitle != ""){
+                             print("DocumentNewTitle : ${newTitle}");
+                             Map<String, dynamic> apiRequest = {
+                               "userId":"${userDetails['_id'] ?? ""}",
+                               "documentId":documentId,
+                               "title": {
+                                 appLanguage:newTitle
+                               }
+                             };
+                             GlobalHelper().progressDialog(context,getText("document_update"),getText("document_updating"));
+                             bool result = await updateDocumentTitle(apiRequest);
+                             Navigator.of(context).pop();
+                             if(result){
+                               ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text('${getText("document_updated_success")} $successIcon')),
+                               );
+                               setState(() {
+                                 uploadedDocs[index]["title"] = newTitle;
+                               });
+                             }else{
+                               ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text('${getText("document_updated_failed")} $failedIcon')),
+                               );
+                             }
+                           }
+
+                          },
+                          backgroundColor: Colors.blue,
+                          foregroundColor: Colors.white,
+                          icon: Icons.edit,
+                          label: 'Edit',
+                        ),
+                      ),
+                      SlidableAction(
+                        onPressed: (context) {
+                          if (isUploaded) {
+                            var dContext = context;
+                            GlobalHelper().showDeleteConfirmationDialog(
+                              dContext,
+                              "document",
+                                  () async {
+                                GlobalHelper().progressDialog(context,getText("document_delete"),getText("document_deleting") );
+                                var deleteResult = await deleteUploadedDocument(userDetails['_id'] ?? "", documentId);
+                                Navigator.of(context).pop();
+                                if (deleteResult) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text("${getText("document_deleted_success")} $successIcon")),
+                                  );
+                                  setState(() {
+                                    uploadedDocs.removeAt(index);
+                                  });
+                                } else {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text("${getText("document_deleted_failed")} $failedIcon")),
+                                  );
+                                }
+                              },
+                            );
+                          } else {
+                            setState(() {
+                              uploadedDocs.removeAt(index);
+                            });
+                          }
+                        },
+                        backgroundColor: Colors.red,
+                        foregroundColor: Colors.white,
+                        icon: Icons.delete,
+                        label: getText("delete"),
+                      ),
+                    ],
+                  ),
+                
+                  // Main tile content
+                  child: ListTile(
+                    leading: const Icon(Icons.insert_drive_file),
+                    title: Text(title),
+                    subtitle: isUploaded
+                        ? Text(url)
+                        : Text("${file.name} • ${(file.size / 1024).toStringAsFixed(2)} KB"),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          isUploaded ? Icons.check_circle : Icons.error,
+                          color: isUploaded ? Colors.green : Colors.red,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          isUploaded ? getText("uploaded") : getText("not_uploaded"),
+                          style: TextStyle(
+                            color: isUploaded ? Colors.green : Colors.red,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        if (isUploaded) ...[
+                          const SizedBox(width: 10),
+                          GestureDetector(
+                            onTap: () {
+                              _showFullImage(context, documentImage);
+                            },
+                            child: const Icon(
+                              Icons.remove_red_eye_outlined,
+                              color: Colors.grey,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
                 ),
               ),
             );
+
           },
         ),
       ]),
@@ -611,7 +776,7 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
                 }
               }
                   : null,
-              child: const Text('Back'),
+              child: Text(getText("back")),
             );
           },
         );
@@ -624,7 +789,7 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
             updateProfile();
 
           },
-          child: const Text('Save'),
+          child: Text(getText("save")),
         )
             : StreamBuilder<bool>(
           stream: wizard.getIsGoNextEnabledStream(),
@@ -640,7 +805,7 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
                 }
               }
                   : null,
-              child: const Text('Next'),
+              child: Text(getText("next")),
             );
           },
         );
@@ -673,12 +838,12 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
   }
 
   bool _validatePersonalDetails() {
-    return true;
+    // return true;
     if (uNameController.text.trim().isEmpty ||
         uEmailController.text.trim().isEmpty ||
         uPhoneController.text.trim().isEmpty || uAddressController.text.trim().isEmpty || uWebSiteController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('⚠️ Please fill in all required personal details.')),
+        SnackBar(content: Text('⚠️ ${getText("fill_personal_details")}')),
       );
       return false;
     }
@@ -686,12 +851,12 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
   }
 
   bool _validateCompanyDetails() {
-   return true;
+   // return true;
     if (cNameController.text.trim().isEmpty ||
         cJobTitleEmailController.text.trim().isEmpty ||
         cEmailController.text.trim().isEmpty || cPhoneController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('⚠️ Please fill in all required company details.')),
+         SnackBar(content: Text('⚠️ ${getText("fill_company_details")}')),
       );
       return false;
     }
@@ -699,10 +864,10 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
   }
 
   bool _validateSocialMediaDetails() {
-    return true;
+    // return true;
     if (sWhatsappController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('⚠️ Please fill in all required social media details.')),
+         SnackBar(content: Text('⚠️ ${getText("fill_social_details")}')),
       );
       return false;
     }
@@ -720,7 +885,7 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
     String userImageUrl = "";
     var ln = appLanguage;
     //upload profile picture
-    GlobalHelper().progressDialog(context,"Profile update","Profile updating, please wait...");
+    GlobalHelper().progressDialog(context,getText("profile_update"),getText("profile_updating"));
     if(userDetails != {}){
       userId = userDetails['_id'] ?? "";
       print('UserId:${userId}');
@@ -742,32 +907,32 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
     if(uploadedDocs.isNotEmpty){
       for(int i=0; i< uploadedDocs.length; i++){
           var uploadDoc = uploadedDocs[i];
-          PlatformFile tempDocument = uploadDoc['file'];
-          String title = uploadDoc['title'];
-          dynamic docRequest = {
-            "userId":userId,
-            "fileExtension":tempDocument.extension ?? "",
-            "title": {
-              ln: title,
-            },
-            "type":"DOCUMENT"
-          };
-          final documentRequest = await translateAndBuildRequest(docRequest, ln, targetLanguages,"document");
+          bool isUploaded = uploadDoc['isUploaded'] ?? false;
+          if(!isUploaded){
+            PlatformFile tempDocument = uploadDoc['file'];
+            String title = uploadDoc['title'];
+            dynamic docRequest = {
+              "userId":userId,
+              "fileExtension":tempDocument.extension ?? "",
+              "title": {
+                ln: title,
+              },
+              "type":"DOCUMENT"
+            };
+            final documentRequest = await translateAndBuildRequest(docRequest, ln, targetLanguages,"document");
 
-          if(tempDocument.path != ""){
-            var preSignedUrl = await getPreSignedUrl(userId,tempDocument.extension ?? "",type: 2,docRequest: documentRequest);
-            if((preSignedUrl ?? {}) != {}){
-              var result = await uploadFileToPreSignedUrl(preSignedUrl?['uploadUrl'] ?? "",_pickedFile ?? PlatformFile(name: "", size: 1));
-              print("DocumentImageUploaded: ${result}");
-            }
-            else{
-              updateResult(2); // document image upload error
-              return;
+            if(tempDocument.path != ""){
+              var preSignedUrl = await getPreSignedUrl(userId,tempDocument.extension ?? "",type: 2,docRequest: documentRequest);
+              if((preSignedUrl ?? {}) != {}){
+                var result = await uploadFileToPreSignedUrl(preSignedUrl?['uploadUrl'] ?? "",tempDocument);
+                print("DocumentImageUploaded: ${result}");
+              }
+              else{
+                updateResult(2); // document image upload error
+                return;
+              }
             }
           }
-
-
-
       }
     }
 
@@ -834,19 +999,19 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
 
     switch (type) {
       case 1:
-        message = 'Profile image upload failed ❌';
+        message = '${getText("profile_image_failed")} ❌';
         break;
       case 2:
-        message = 'Documents Upload Failed ❌';
+        message = '${getText("documents_upload_failed")} ❌';
         break;
       case 3:
-        message = 'Profile Update Failed ❌';
+        message = '${getText("profile_update_failed")} ❌';
         break;
       case 4:
-        message = 'Profile Update Successfully ✅';
+        message = '${getText("profile_update_success")} ✅';
         break;
       default:
-        message = "Something went wrong,Please try again.";
+        message = getText("something_wrong");
     }
 
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)),);
@@ -860,8 +1025,9 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
       String inputLang,
       List<String> targetLanguages,String translateFieldType) async {
 
+    const serviceAccountJson = {};
     // Step 1: Authenticate with Google Cloud using service account
-    final serviceAccountJson = {};
+
     final serviceAccountCredentials = ServiceAccountCredentials.fromJson(serviceAccountJson);
     final parent = 'projects/profio-473307/locations/global';
 
@@ -964,6 +1130,14 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
     })
         .toList();
 
+    localizedData['documents'] = userData['documents']
+        .map((link) => {
+      'title': link['title'][languageCode] ?? link['title']['en'],
+      'url': link['url'],
+      'id': link['_id'] ?? "",
+      'isUploaded': true
+    }).toList();
+
     // Extract other non-translatable fields directly
     localizedData['email'] = userData['email'];
     localizedData['phoneNumber'] = userData['phoneNumber'];
@@ -973,6 +1147,13 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
     localizedData['companyAddress'] = userData['companyAddress'][languageCode] ?? userData['companyAddress']['en'];
     localizedData['companyWebsite'] = userData['companyWebsite'];
     localizedData['profileImageURL'] = userData['profileImageURL'];
+
+    localizedData['whatsappNumber'] = userData['whatsappNumber'];
+    localizedData['facebookUrl'] = userData['facebookUrl'];
+    localizedData['instagramUrl'] = userData['instagramUrl'];
+    localizedData['tikTokUrl'] = userData['tikTokUrl'];
+    localizedData['youtubeUrl'] = userData['youtubeUrl'];
+    localizedData['linkedInUrl'] = userData['linkedInUrl'];
 
     return localizedData;
   }
@@ -1034,12 +1215,86 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
       sYoutubeController.text = data['youtubeUrl'] ?? "";
 
       otherLinks = List<Map<String, dynamic>>.from(data['otherLinks'] ?? []);
+      uploadedDocs = List<Map<String, dynamic>>.from(data['documents'] ?? []);
+
 
 
       print("CheckUserData:${data}");
     }
   }
 
+  String getText(String title){
+    return localeProvider.getText(key: title);
+  }
+
+
+  // Function to show the edit dialog
+  Future<String> _showEditDialog(BuildContext context,String currentFileName) async{
+    final TextEditingController controller = TextEditingController();
+    controller.text = currentFileName.toString();
+    String newTitle = "";
+
+    await showDialog(
+      context: context,
+      barrierDismissible: false, // Prevent closing by tapping outside
+      builder: (BuildContext context) {
+        return AlertDialog(
+          contentPadding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          title: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                getText("edit_doc_title"),
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+              ),
+              IconButton(
+                icon: const Icon(Icons.close),
+                onPressed: () => Navigator.pop(context),
+                tooltip: getText("close"),
+              ),
+            ],
+          ),
+          content: TextField(
+            autofocus: true,
+            controller: controller,
+            decoration: InputDecoration(
+              hintText: getText("enter_new_text"),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            ),
+          ),
+          actionsPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          actions: [
+            TextButton(
+              onPressed: () {
+                final newText = controller.text.trim();
+
+                if (newText.isNotEmpty && newText.length > 3) {
+                  // Handle saving the new text here
+                  Navigator.pop(context);
+                  newTitle = newText;
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                     SnackBar(content: Text(getText("valid_text"))),
+                  );
+                }
+              },
+              child:  Text(getText("save")),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+              },
+              child: Text(getText("cancel")),
+            ),
+          ],
+        );
+      },
+    );
+
+    return newTitle;
+  }
 
 }
 
@@ -1050,6 +1305,39 @@ bool _isImageFile(String fileName) {
       extension.endsWith('.jpeg') ||
       extension.endsWith('.png');
 }
+
+void _showFullImage(BuildContext context, String imageUrl) {
+  showDialog(
+    context: context,
+    builder: (context) =>
+        Dialog(
+          child: GestureDetector(
+            onTap: () {
+              Navigator.of(context).pop(); // Close the dialog when tapped
+            },
+            child: InteractiveViewer(
+              child: Image.network(imageUrl),
+            ),
+          ),
+        ),
+  );
+}
+
+bool isDocumentShouldVisible(int documentCount){
+  bool result = true;
+  int userDocumentUploadLimit =  (userSubscribedPlan.id ?? "NONE") != "NONE" ? (userSubscribedPlan.documentUploadLimit ?? 2) : 2; // assume for default its 2
+  result = documentCount < userDocumentUploadLimit;
+  return result;
+}
+
+int documentUploadLimit(){
+  return (userSubscribedPlan.id ?? "NONE") != "NONE" ? (userSubscribedPlan.documentUploadLimit ?? 2) : 2; // assume for default its 2
+}
+
+
+
+
+
 
 
 
