@@ -4,6 +4,7 @@ class Subscription {
   final String? description;
   final int? cardTemplateLimit;
   final int? languageLimit;
+  final int? documentUploadLimit;
   final bool? isShowPremiumBadge;
   final bool? isShowProfileClickCount;
   final bool? isActive;
@@ -20,6 +21,7 @@ class Subscription {
     this.description,
     this.cardTemplateLimit,
     this.languageLimit,
+    this.documentUploadLimit,
     this.isShowPremiumBadge,
     this.isShowProfileClickCount,
     this.isActive,
@@ -52,6 +54,7 @@ class Subscription {
           ? (json['amount'] as num).toDouble()
           : 0.0,
       currencyCode: json['currency_code'] ?? '',
+      documentUploadLimit: json['document_upload_limit'] ?? 0
     );
   }
 

@@ -12,56 +12,56 @@ class SettingsList extends StatelessWidget {
     final AuthService _authService = AuthService();
     void pageNavigatorEngine(String selectedPage) {
       switch (selectedPage) {
-        case 'Profile':
+        case 'profile':
         // Navigate to Profile page
           Navigator.push(
             context,
             MaterialPageRoute(builder: (context) => HomePage(parentPageId: 101)),
           );
           break;
-        case 'Subscription':
+        case 'subscription':
           Navigator.push(
             context,
             MaterialPageRoute(builder: (context) => HomePage(parentPageId: 100)),
           );
           break;
-        case 'Language':
+        case 'language':
         // Navigate to Language settings
           break;
-        case 'Notification':
+        case 'notification':
           Navigator.push(
             context,
             MaterialPageRoute(builder: (context) => HomePage(parentPageId: 102)),
           );
           break;
-        case 'Privacy':
+        case 'privacy':
           Navigator.push(
             context,
             MaterialPageRoute(builder: (context) => HomePage(parentPageId: 103)),
           );
           break;
-        case 'Help & Support':
+        case 'help_support':
           Navigator.push(
             context,
             MaterialPageRoute(builder: (context) => HomePage(parentPageId: 104)),
           );
           break;
-        case 'About Us':
+        case 'about_us':
           Navigator.push(
             context,
             MaterialPageRoute(builder: (context) => HomePage(parentPageId: 105)),
           );
           break;
-        case 'Terms of Service':
+        case 'terms_of_service':
           Navigator.push(
             context,
             MaterialPageRoute(builder: (context) => HomePage(parentPageId: 103)),
           );
           break;
-        case 'Light Mode':
+        case 'dark_mode':
         // Handle Light Mode toggle
           break;
-        case 'Language Toggle':
+        case 'language_toggle':
         // Handle Language Toggle
           break;
         default:
@@ -79,10 +79,12 @@ class SettingsList extends StatelessWidget {
         'titleKey': localeProvider.getText(key: 'account'),
         'subtopics': [
           {
+            'key': "profile",
             'title': localeProvider.getText(key: 'profile'),
             'subTitle': localeProvider.getText(key: 'profile_subtitle'),
           },
           {
+            'key': "subscription",
             'title': localeProvider.getText(key: 'subscription'),
             'subTitle': localeProvider.getText(key: 'subscription_subtitle'),
           },
@@ -92,14 +94,17 @@ class SettingsList extends StatelessWidget {
         'titleKey': localeProvider.getText(key: 'preference'),
         'subtopics': [
           {
+            'key': "language",
             'title': localeProvider.getText(key: 'language'),
             'subTitle': localeProvider.getText(key: 'language_subtitle'),
           },
           {
+            'key': "notification",
             'title': localeProvider.getText(key: 'notification'),
             'subTitle': localeProvider.getText(key: 'notification_subtitle'),
           },
           {
+            'key': "privacy",
             'title': localeProvider.getText(key: 'privacy'),
             'subTitle': localeProvider.getText(key: 'privacy_subtitle'),
           },
@@ -109,6 +114,7 @@ class SettingsList extends StatelessWidget {
         'titleKey': localeProvider.getText(key: 'support'),
         'subtopics': [
           {
+            'key': "help_support",
             'title': localeProvider.getText(key: 'help_support'),
             'subTitle': localeProvider.getText(key: 'help_support_subtitle'),
           },
@@ -118,10 +124,12 @@ class SettingsList extends StatelessWidget {
         'titleKey': localeProvider.getText(key: 'about'),
         'subtopics': [
           {
+            'key': "about_us",
             'title': localeProvider.getText(key: 'about_us'),
             'subTitle': localeProvider.getText(key: 'about_us_subtitle'),
           },
           {
+            'key': "terms_of_service",
             'title': localeProvider.getText(key: 'terms_of_service'),
             'subTitle': localeProvider.getText(key: 'terms_of_service_subtitle'),
           },
@@ -131,10 +139,12 @@ class SettingsList extends StatelessWidget {
         'titleKey': localeProvider.getText(key: 'appearance'),
         'subtopics': [
           {
+            'key': "dark_mode",
             'title': localeProvider.getText(key: 'dark_mode'),
             'subTitle': localeProvider.getText(key: 'dark_mode_subtitle'),
           },
           {
+            'key': "language_toggle",
             'title': localeProvider.getText(key: 'language_toggle'),
             'subTitle': localeProvider.getText(key: 'language_toggle_subtitle'),
           },
@@ -184,7 +194,7 @@ class SettingsList extends StatelessWidget {
                       Navigator.of(context).pop();
                       Navigator.pushNamedAndRemoveUntil(context, '/login', (Route<dynamic> route) => false);
                     }else{
-                      pageNavigatorEngine(subtopic['title']);
+                      pageNavigatorEngine(subtopic['key']);
                     }
 
                   },

@@ -141,6 +141,7 @@ import 'package:profio/features/services/api_service.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../core/constants/app_strings.dart';
+import '../../../../core/models/subscription.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text.dart';
 import '../../../../providers/locale_provider.dart';
@@ -169,6 +170,7 @@ class _HomePageState extends State<HomePage> {
   int _currentIndex = 0;
 
   Widget listOfInternalPages(){
+    print("CheckParentId:${widget.parentPageId}");
     if(widget.parentPageId == 100){
       return const SubscriptionPage();
     }
@@ -236,6 +238,30 @@ class _HomePageState extends State<HomePage> {
   }
 
   String _getTitleKeyForCurrentPage() {
+    print("currentIndex: $_currentIndex, parentPageId: ${widget.parentPageId}");
+
+    if (widget.parentPageId != 0) {
+      switch (widget.parentPageId) {
+        case 100:
+          return 'subscription';
+        case 101:
+          return 'profile_edit';
+        case 102:
+          return 'notifications';
+        case 103:
+          return 'privacy_policy';
+        case 104:
+          return 'help_support';
+        case 105:
+          return 'about_us';
+        case 120:
+          return 'all_templates';
+        default:
+          return 'settings'; // fallback title for unknown internal pages
+      }
+    }
+
+    // Default (main tab) titles
     switch (_currentIndex) {
       case 0:
         return 'home';
@@ -258,9 +284,21 @@ class _HomePageState extends State<HomePage> {
       Map<String,dynamic> user = await getUserByUUID() ?? {};
       if(user != {}){
         appUserId = user['_id'] ?? "";
+        getUserSubscriptionType(user["subscriptionId"] ?? "");
       }
     }
 
+  }
+
+  Future<void> getUserSubscriptionType(String subscriptionId) async{
+    if(userSubscribedPlan.id == "NONE"){
+      List<Subscription> subscriptions = await getSubscriptionTypes() ?? [];
+      userSubscribedPlan = subscriptions.firstWhere((s) => s.id == subscriptionId, orElse: () => subscriptions.firstWhere(
+            (s) => s.code == "FREE",
+        orElse: () => Subscription(id: "FREE",code:"FREE",description:"default",cardTemplateLimit: 1,languageLimit: 3,documentUploadLimit: 2), // optional, if even "FREE" might not exist
+      ),);
+      print("UserSubscriptionPlan:${userSubscribedPlan.code}");
+    }
   }
 
   @override
@@ -269,9 +307,19 @@ class _HomePageState extends State<HomePage> {
 
     return Scaffold(
       appBar: AppBar(
+        leading: Visibility(
+          visible: widget.parentPageId != 0,
+          child: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () {
+              Navigator.of(context).pop();
+            },
+          ),
+        ),
         title: Text(localeProvider.getText(key: _getTitleKeyForCurrentPage())),
         centerTitle: true,
         automaticallyImplyLeading: false,
+
         actions: [
           IconButton(
             onPressed: () => localeProvider.toggleLanguage(),
@@ -289,21 +337,24 @@ class _HomePageState extends State<HomePage> {
         ],
       ),
       // ✅ Show SubscriptionPage if parentPageId == 100
-      body: (widget.parentPageId != null)
+      body: (widget.parentPageId != 0)
           ? listOfInternalPages()
           : _pages[_currentIndex],
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex, // must stay 0–4
-        items: _bottomNavItems(localeProvider),
-        type: BottomNavigationBarType.fixed,
-        selectedItemColor: AppColors.primaryGreen,
-        unselectedItemColor: Colors.white,
-        backgroundColor: Colors.black,
-        onTap: (index) {
-          setState(() {
-            _currentIndex = index; // safe index
-          });
-        },
+      bottomNavigationBar: Visibility(
+        visible: widget.parentPageId == 0,
+        child: BottomNavigationBar(
+          currentIndex: _currentIndex, // must stay 0–4
+          items: _bottomNavItems(localeProvider),
+          type: BottomNavigationBarType.fixed,
+          selectedItemColor: AppColors.primaryGreen,
+          unselectedItemColor: Colors.white,
+          backgroundColor: Colors.black,
+          onTap: (index) {
+            setState(() {
+              _currentIndex = index; // safe index
+            });
+          },
+        ),
       ),
     );
   }

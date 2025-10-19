@@ -59,7 +59,7 @@ class GlobalHelper{
       builder: (BuildContext context) {
         return AlertDialog(
           title: const Text('Are you sure?'),
-          content: Text('Do you really want to delete this $item?'),
+          content: Text('Do you really want to delete this $item?',style: TextStyle(color: Colors.black),),
           actions: [
             TextButton(
               onPressed: () {
@@ -69,8 +69,8 @@ class GlobalHelper{
             ),
             TextButton(
               onPressed: () {
-                onDelete();
                 Navigator.of(context).pop();
+                onDelete();
               },
               child: const Text('Delete'),
             ),
