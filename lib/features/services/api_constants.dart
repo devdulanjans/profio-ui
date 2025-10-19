@@ -14,3 +14,7 @@ const getUserTemplates = "/api/user-templates";
 String postCreateTemplateForUser (String userId,String templateId) =>"/api/user-templates/$userId/$templateId";
 const putSubscribeLanguage = "/api/users/language/subscribe";
 const postShareTemplate = "/api/user-templates/share";
+String deleteDocument (String userId,String documentId) =>"/api/users/document/$userId/DOCUMENT/$documentId";
+const patchUpdateDocumentTitle = "/api/users/document/title";
+String deselectTemplate (String templateId) =>"/api/user-templates/$templateId";
+

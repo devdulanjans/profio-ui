@@ -1,8 +1,12 @@
+import 'dart:io';
 import 'dart:math';
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_html/flutter_html.dart';
+import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:googleapis/connectors/v1.dart' hide Provider;
+import 'package:path_provider/path_provider.dart';
 import 'package:profio/core/helpers/global_helper.dart';
 import 'package:profio/features/services/api_service.dart';
 import 'package:share_plus/share_plus.dart';
@@ -27,13 +31,26 @@ class _AllTemplatesPageState extends State<AllTemplatesPage> {
   late Future<List<Template>> templatesFuture;
   Map<String,dynamic> userDetails = {};
   String appLanguage = "en";
+  late LocaleProvider localeProvider;
+  late VoidCallback listener;
 
   @override
   void initState() {
     super.initState();
     templatesFuture = getTemplates();
 
+    listener = () {
+      if (mounted) {
+        appLanguage = localeProvider.currentLanguageCode ?? "";
+        print("LanguageChanged:${appLanguage} -- ${localeProvider.currentLanguage}");
+      }
+    };
 
+    // ✅ Safe way to access Provider after the first frame
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      localeProvider = Provider.of<LocaleProvider>(context, listen: false);
+      localeProvider.addListener(listener);
+    });
   }
 
 
@@ -81,8 +98,7 @@ class _AllTemplatesPageState extends State<AllTemplatesPage> {
 
   @override
   Widget build(BuildContext context) {
-    final localeProvider = Provider.of<LocaleProvider>(context);
-    appLanguage = localeProvider.currentLanguageCode;
+    int selectedTemplateCount = 0;
     return FutureBuilder(
         future: templatesFuture,
         builder: (context, snapshot) {
@@ -91,10 +107,11 @@ class _AllTemplatesPageState extends State<AllTemplatesPage> {
           } else if (snapshot.hasError) {
             return Center(child: Text('❌ Error: ${snapshot.error}'));
           } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return const Center(child: Text('No templates available.'));
+            return Center(child: Text(getText("no_templates_available")));
           }
 
           final allTemplates = snapshot.data ?? [];
+          int selectedTemplateCount = allTemplates.where((t) => t.isAlreadySelected ?? false).length;
 
 
 
@@ -104,146 +121,162 @@ class _AllTemplatesPageState extends State<AllTemplatesPage> {
               // Create Template instance from JSON
               Template template = allTemplates[index];
 
-              return Dismissible(
+              return SlidableAutoCloseBehavior(
                 key: Key(template.id ?? ''),
-                direction: DismissDirection.endToStart,
-                onDismissed: (direction) {
-                  // We won't perform the actual delete here. We will wait for confirmation.
-                 GlobalHelper().showDeleteConfirmationDialog(context, "template", (){
-
-                 });
-                },
-                background: Container(
-                  color: Colors.red,
-                  child: const Align(
-                    alignment: Alignment.centerRight,
-                    child: Padding(
-                      padding: EdgeInsets.all(16.0),
-                      child: Icon(Icons.delete, color: Colors.white),
-                    ),
-                  ),
-                ),
-                child: GestureDetector(
-                  onTap: (){
-                    _showFullImage(context,template.previewImage ?? "");
-                  },
-                  child: Card(
-                    margin: const EdgeInsets.all(8),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    elevation: 5,
-                    child: Stack(
+                  closeWhenTapped: true,
+                  child: Slidable(
+                    enabled: (template.isAlreadySelected ?? false),
+                    dragStartBehavior: DragStartBehavior.start,
+                    closeOnScroll: true,
+                    useTextDirection: true,
+                    endActionPane: ActionPane(
+                      motion: const DrawerMotion(), // smooth motion effect
                       children: [
-                        // Background image as a full card background
-                        Container(
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(12),
-                            image: DecorationImage(
-                              image: NetworkImage(template.previewImage ?? ""), // Ensure the URL is valid
-                              fit: BoxFit.cover, // Make sure it covers the whole card
-                            ),
-                          ),
-                          width: double.infinity, // Ensure it spans the entire width of the card
-                          height: 105, // Set the height to 100 as per your requirement
-                        ),
-                        // Content inside the card, overlaying on top of the image
-                        Positioned.fill(
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: Colors.black.withOpacity(0.5), // Dark overlay for visibility
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            padding: const EdgeInsets.all(8), // Reduced padding for smaller card
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                // Title and description
-                                Text(
-                                  template.name ?? "Template Name", // Use a fallback for null name
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16, // Smaller font size for title
-                                    color: Colors.white,
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
-                                  maxLines: 1,
-                                ),
-                                const SizedBox(height: 4), // Reduced space between title and description
-                                Text(
-                                  template.description ?? "Template Description", // Use a fallback for null description
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 12, // Smaller font size for description
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                  maxLines: 2,
-                                ),
-                                Spacer(),
-                                // Row of action icons (Eye and Checked icons inside circular avatars)
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.end,
-                                  children: [
-                                    // Eye icon for preview inside a circular avatar
-                                    Visibility(
-                                      visible: template.isAlreadySelected ?? false,
-                                      child: GestureDetector(
-                                        onTap: () {
-                                          // _showFullImage(context, template.previewImage ?? "");
-                                          showHtmlDialog(context:context,htmlTemplate:  template.htmlContent ?? "",data: userDetails ?? {});
-                                        },
-                                        child: CircleAvatar(
-                                          radius: 16, // Avatar size
-                                          backgroundColor: Colors.black.withOpacity(0.6),
-                                          child: const Icon(
-                                            Icons.visibility,
-                                            color: Colors.white,
-                                            size: 20, // Icon size inside the avatar
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    // Checked/Add icon inside a circular avatar
-                                    GestureDetector(
-                                      onTap: () {
-                                      },
-                                      child: CircleAvatar(
-                                        radius: 16, // Avatar size
-                                        backgroundColor: (template.isAlreadySelected ?? false)
-                                            ? Colors.green
-                                            : Colors.blueAccent,
-                                        child: Icon(
-                                          (template.isAlreadySelected ?? false)
-                                              ? Icons.check_circle
-                                              : Icons.add_circle_outline,
-                                          color: Colors.white,
-                                          size: 20, // Icon size inside the avatar
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Visibility(
-                                      visible: template.isAlreadySelected ?? false,
-                                      child: GestureDetector(
-                                        onTap: () {
-                                          _showConfirmationDialog(context,template.id ?? "");
-                                        },
-                                        child: CircleAvatar(
-                                          radius: 16, // Avatar size
-                                          backgroundColor:Colors.orange,
-                                          child: Icon(Icons.share_rounded,
-                                            color: Colors.white,
-                                            size: 20, // Icon size inside the avatar
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
+                        Visibility(
+                          visible: (template.isAlreadySelected ?? false),
+                          child: SlidableAction(
+                            onPressed: (c) async{
+                              _showConfirmationDialogDeselectTemplate(context,template.id ?? "");
+                            },
+                            backgroundColor: Colors.blue,
+                            foregroundColor: Colors.white,
+                            icon: Icons.deselect,
+                            label: getText("deselect"),
                           ),
                         ),
+
                       ],
+                    ),
+                  child: GestureDetector(
+                    onTap: (){
+                      _showFullImage(context,template.previewImage ?? "");
+                    },
+                    child: Card(
+                      margin: const EdgeInsets.all(8),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      elevation: 5,
+                      child: Stack(
+                        children: [
+                          // Background image as a full card background
+                          Container(
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(12),
+                              image: DecorationImage(
+                                image: NetworkImage(template.previewImage ?? ""), // Ensure the URL is valid
+                                fit: BoxFit.cover, // Make sure it covers the whole card
+                              ),
+                            ),
+                            width: double.infinity, // Ensure it spans the entire width of the card
+                            height: 105, // Set the height to 100 as per your requirement
+                          ),
+                          // Content inside the card, overlaying on top of the image
+                          Positioned.fill(
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: Colors.black.withOpacity(0.5), // Dark overlay for visibility
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              padding: const EdgeInsets.all(8), // Reduced padding for smaller card
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  // Title and description
+                                  Text(
+                                    template.name ?? "Template Name", // Use a fallback for null name
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16, // Smaller font size for title
+                                      color: Colors.white,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                    maxLines: 1,
+                                  ),
+                                  const SizedBox(height: 4), // Reduced space between title and description
+                                  Text(
+                                    template.description ?? "Template Description", // Use a fallback for null description
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 12, // Smaller font size for description
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    maxLines: 2,
+                                  ),
+                                  Spacer(),
+                                  // Row of action icons (Eye and Checked icons inside circular avatars)
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.end,
+                                    children: [
+                                      // Eye icon for preview inside a circular avatar
+                                      Visibility(
+                                        visible: template.isAlreadySelected ?? false,
+                                        child: GestureDetector(
+                                          onTap: () {
+                                            // _showFullImage(context, template.previewImage ?? "");
+                                            showHtmlDialog(context:context,htmlTemplate:  template.htmlContent ?? "",data: userDetails ?? {});
+                                          },
+                                          child: CircleAvatar(
+                                            radius: 16, // Avatar size
+                                            backgroundColor: Colors.black.withOpacity(0.6),
+                                            child: const Icon(
+                                              Icons.visibility,
+                                              color: Colors.white,
+                                              size: 20, // Icon size inside the avatar
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      // Checked/Add icon inside a circular avatar
+                                      GestureDetector(
+                                        onTap:!(template.isAlreadySelected ?? false) ?  () {
+                                          if((userSubscribedPlan.cardTemplateLimit ?? 1) > selectedTemplateCount){
+                                            selectTemplate(context, template.id ?? "");
+                                          }else{
+                                            ScaffoldMessenger.of(context).showSnackBar(
+                                              SnackBar(content: Text("${getText("template_limit_reached")} $warmingIcon")),
+                                            );
+                                          }
+
+                                        }:null,
+                                        child: CircleAvatar(
+                                          radius: 16, // Avatar size
+                                          backgroundColor: (template.isAlreadySelected ?? false)
+                                              ? Colors.green
+                                              : Colors.blueAccent,
+                                          child: Icon(
+                                            (template.isAlreadySelected ?? false)
+                                                ? Icons.check_circle
+                                                : Icons.add_circle_outline,
+                                            color: Colors.white,
+                                            size: 20, // Icon size inside the avatar
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Visibility(
+                                        visible: template.isAlreadySelected ?? false,
+                                        child: GestureDetector(
+                                          onTap: () {
+                                            _showConfirmationDialog(context,template.id ?? "");
+                                          },
+                                          child: CircleAvatar(
+                                            radius: 16, // Avatar size
+                                            backgroundColor:Colors.orange,
+                                            child: Icon(Icons.share_rounded,
+                                              color: Colors.white,
+                                              size: 20, // Icon size inside the avatar
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -305,24 +338,77 @@ class _AllTemplatesPageState extends State<AllTemplatesPage> {
     );
   }
 
+
+  String getText(String title){
+    return localeProvider.getText(key: title);
+  }
+
   void selectTemplate(BuildContext context,String templateId) async{
 
-    GlobalHelper().progressDialog(context,"selecting a template.", "Please wait while we process your selection and load the template.");
+    GlobalHelper().progressDialog(context,getText("selecting_template"), getText("processing_selection"));
 
     var result = await createTemplateForUser(appUserId,templateId);
     Navigator.of(context).pop();
     if(result){
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Template selected successfully.$successIcon")),
+        SnackBar(content: Text("${getText("template_selected_success")} $successIcon")),
       );
       refreshTemplates();
     }
     else{
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Template selected failed.$failedIcon")),
+        SnackBar(content: Text("${getText("template_selected_failed")} $failedIcon")),
       );
     }
 
+  }
+
+  void _showConfirmationDialogDeselectTemplate(BuildContext context,String templateId) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(getText("deselect_template")),
+        content: Text(getText("confirm_deselect_template"),style: TextStyle(color: Colors.black),),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(ctx).pop(); // close dialog
+            },
+            child: Text(getText("no")),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              // Save the parent context before dismissing the dialog
+              final scaffoldContext = context; // Use outer context, not ctx from dialog
+
+              Navigator.of(ctx).pop(); // close dialog
+
+              // Show a loading dialog or progress indicator
+              GlobalHelper().progressDialog(scaffoldContext, getText("template_deselect"), getText("template_deselecting_wait"));
+
+              // Generate the URL
+              bool result = await deleteSelectedTemplate(templateId);
+
+              // Close the progress dialog
+              Navigator.of(scaffoldContext).pop();
+
+              if (result) {
+                ScaffoldMessenger.of(scaffoldContext).showSnackBar(
+                  SnackBar(content: Text("${getText("template_deselect_success")} ${successIcon}")),
+                );
+                refreshTemplates();
+              } else {
+                // Show the snackbar using scaffoldContext (not ctx)
+                ScaffoldMessenger.of(scaffoldContext).showSnackBar(
+                  SnackBar(content: Text("${getText("template_deselect_failed")} ${failedIcon}")),
+                );
+              }
+            },
+            child: Text(getText("yes")),
+          ),
+        ],
+      ),
+    );
   }
 
   // Function to show the full-size image
@@ -370,60 +456,79 @@ class _AllTemplatesPageState extends State<AllTemplatesPage> {
       },
     );
   }
+
+  void _showConfirmationDialog(BuildContext context,String templateId) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(getText("share_template")),
+        content: Text(getText("confirm_share_link"),style: TextStyle(color: Colors.black),),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(ctx).pop(); // close dialog
+            },
+            child: Text(getText("no")),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              // Save the parent context before dismissing the dialog
+              final scaffoldContext = context; // Use outer context, not ctx from dialog
+
+              Navigator.of(ctx).pop(); // close dialog
+
+              // Show a loading dialog or progress indicator
+              GlobalHelper().progressDialog(scaffoldContext,getText("template_share"), getText("link_generating_wait"));
+
+              // Generate the URL
+              String url = await shareUserTemplate(appUserId, templateId);
+
+
+
+              // Close the progress dialog
+              Navigator.of(scaffoldContext).pop();
+
+              if (url.isNotEmpty) {
+
+                // Download profile picture
+
+                final response = await getThumbnailUserImage(userDetails);
+
+                // Save to temporary directory
+                final tempDir = await getTemporaryDirectory();
+                final file = File('${tempDir.path}/profile_thumbnail.jpg');
+                await file.writeAsBytes(response.bodyBytes);
+
+
+                await SharePlus.instance.share(
+                  ShareParams(
+                    files: [XFile(file.path)],
+                    text: url,
+                    subject: getText("profio_user_template"), // subject can change what as user need
+
+                    //uri: Uri.parse(url)
+                  ),
+                );
+              } else {
+                // Show the snackbar using scaffoldContext (not ctx)
+                ScaffoldMessenger.of(scaffoldContext).showSnackBar(
+                  SnackBar(content: Text("❌ ${getText("template_link_generation_failed")}")),
+                );
+              }
+            },
+            child: Text(getText("yes")),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 
-void _showConfirmationDialog(BuildContext context,String templateId) {
-  showDialog(
-    context: context,
-    builder: (ctx) => AlertDialog(
-      title: Text('Share Template'),
-      content: Text('Do you want to share this link?',style: TextStyle(color: Colors.black),),
-      actions: [
-        TextButton(
-          onPressed: () {
-            Navigator.of(ctx).pop(); // close dialog
-          },
-          child: Text('No'),
-        ),
-        ElevatedButton(
-          onPressed: () async {
-            // Save the parent context before dismissing the dialog
-            final scaffoldContext = context; // Use outer context, not ctx from dialog
 
-            Navigator.of(ctx).pop(); // close dialog
 
-            // Show a loading dialog or progress indicator
-            GlobalHelper().progressDialog(scaffoldContext, "Template Share", "Link generating, please wait...");
 
-            // Generate the URL
-            String url = await shareUserTemplate(appUserId, templateId);
 
-            // Close the progress dialog
-            Navigator.of(scaffoldContext).pop();
-
-            if (url.isNotEmpty) {
-              await SharePlus.instance.share(
-                ShareParams(
-                  text: url,
-                  subject: 'Profio user template',
-
-                  //uri: Uri.parse(url)
-                ),
-              );
-            } else {
-              // Show the snackbar using scaffoldContext (not ctx)
-              ScaffoldMessenger.of(scaffoldContext).showSnackBar(
-                SnackBar(content: Text("❌ Template link generation failed")),
-              );
-            }
-          },
-          child: Text('Yes'),
-        ),
-      ],
-    ),
-  );
-}
 
 
 

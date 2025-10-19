@@ -16,17 +16,41 @@ Future<User?> getCurrentUser() async{
 
 
 
-Future<Map<String, String>> getAuthHeaders() async {
+Future<Map<String, String>> getAuthHeaders({bool isUploadImage = false,String fileName = ""}) async {
   final user = await getCurrentUser();
 
   if (user == null) throw Exception('User not logged in');
 
   final idToken = await user.getIdToken(); // or getIdToken(true) to force refresh
   log("AccessToken:${idToken} - UserId-${user.uid}");
-  return {
-    'Content-Type': 'application/json',
+  if(isUploadImage){
+    final headers = {
+      'Content-Type': getMimeType(fileName),
+       'x-amz-acl': 'public-read'  // Use 'x-amz-acl' instead if working with AWS S3
+    };
+    return headers;
+  }
+  final headers = {
+    'Content-Type': isUploadImage ? 'image/jpeg' : 'application/json',
     'Authorization': 'Bearer $idToken',
   };
+
+  return headers;
+
+}
+
+String getMimeType(String filename) {
+  final extension = filename.toLowerCase().split('.').last;
+
+  switch (extension) {
+    case 'jpg':
+    case 'jpeg':
+      return 'image/jpeg';
+    case 'png':
+      return 'image/png';
+    default:
+      return 'application/octet-stream'; // fallback for unknown types
+  }
 }
 
 
@@ -145,13 +169,15 @@ Future<Map<String, String>?> getPreSignedUrl(String userId, String fileExt,{int 
 }
 
 Future<bool> uploadFileToPreSignedUrl(String uploadUrl, PlatformFile file) async {
-  final headers = await getAuthHeaders();
+  final headers = await getAuthHeaders(isUploadImage: true,fileName: file.name);
+  log("UploadImage|Headers:${headers} -- ${file.name}");
+  log("UploadImage|URL:${uploadUrl}");
   final response = await http.put(
     Uri.parse(uploadUrl),
     headers: headers,
     body: file.bytes,
   );
-
+  log("UploadImage:Response- ${response.body.toString()} -- ${response.statusCode}");
   return response.statusCode == 200 || response.statusCode == 204;
 }
 
@@ -344,6 +370,89 @@ Future<String> shareUserTemplate(String userId,String templateId) async {
   } catch (e) {
     print("❌ Error: $e");
     return "";
+  }
+}
+
+Future<bool> deleteSelectedTemplate(String templatedId) async {
+  final url = Uri.parse("$baseUrl${deselectTemplate(templatedId)}");
+
+  try {
+    final headers = await getAuthHeaders();
+    final response = await http.delete(url, headers: headers,);
+
+    log("checkApiURl:$url \n ResponseCode:- ${response.statusCode}");
+    if (response.statusCode == 200 ) {
+      print("User Template selected delete - Success");
+      return true;
+    }
+    else {
+      print("❌ Failed: ${response.statusCode} - ${response.body}");
+      return false;
+    }
+  } catch (e) {
+    print("❌ Error: $e");
+    return false;
+  }
+}
+
+
+Future<http.Response> getThumbnailUserImage(Map<String,dynamic> userDetails) async{
+
+  String url = fetchImage(userDetails['_id'] ?? "","PROFILE", userDetails['profileImageURL']);
+  return await http.get(Uri.parse(url));
+}
+
+
+Future<bool> deleteUploadedDocument(String userId,String documentId) async {
+  final url = Uri.parse("$baseUrl${deleteDocument(userId, documentId)}");
+
+  try {
+    final headers = await getAuthHeaders();
+    log("CheckApiUrl:${url}");
+    final response = await http.delete(
+      url, headers: headers,
+    );
+
+    log("CheckResponseCode:${response.statusCode}");
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      print("✅ Success: ${response.body}");
+      return true;
+    }
+    else {
+      print("❌ Failed: ${response.statusCode} - ${response.body}");
+      return false;
+    }
+  } catch (e) {
+    print("❌ Error: $e");
+    return false;
+  }
+}
+
+Future<bool> updateDocumentTitle(dynamic request) async {
+  final url = Uri.parse("$baseUrl$patchUpdateDocumentTitle");
+
+  try {
+    final headers = await getAuthHeaders();
+    String apiRequest = jsonEncode(request);
+    log("CheckApiUrl:${url}");
+    log("CheckRequest:|DocumentTitleUpdate|-$apiRequest");
+    final response = await http.patch(
+      url, headers: headers,
+      body: apiRequest
+    );
+
+    log("CheckResponseCode:${response.statusCode}");
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      print("✅ Success: ${response.body}");
+      return true;
+    }
+    else {
+      print("❌ Failed: ${response.statusCode} - ${response.body}");
+      return false;
+    }
+  } catch (e) {
+    print("❌ Error: $e");
+    return false;
   }
 }
 
