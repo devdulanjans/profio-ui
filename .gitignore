@@ -47,3 +47,6 @@ app.*.map.json
 # Ignore keys and sensitive data
 assets/keys/
 *.json
+
+lib/features/services/google_service.dart
+

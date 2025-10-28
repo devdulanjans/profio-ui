@@ -16,6 +16,8 @@ import 'package:provider/provider.dart';
 import '../../../../providers/locale_provider.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 
+import '../../../services/google_service.dart';
+
 
 /// Step-state classes (must mixin WizardStep)
 class PersonalStepState with WizardStep {}
@@ -1025,10 +1027,10 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
       String inputLang,
       List<String> targetLanguages,String translateFieldType) async {
 
-    const serviceAccountJson = {};
+    // const serviceAccountJson = {};
     // Step 1: Authenticate with Google Cloud using service account
 
-    final serviceAccountCredentials = ServiceAccountCredentials.fromJson(serviceAccountJson);
+    final serviceAccountCredentials = ServiceAccountCredentials.fromJson(GoogleService.serviceAccountJson);
     final parent = 'projects/profio-473307/locations/global';
 
     final client = await clientViaServiceAccount(serviceAccountCredentials, [translate.TranslateApi.cloudTranslationScope],);

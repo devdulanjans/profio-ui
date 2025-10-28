@@ -4,6 +4,8 @@ import 'package:flutter_contacts/flutter_contacts.dart';
 import 'package:googleapis/translate/v3.dart' as translate;
 import 'package:googleapis_auth/auth_io.dart';
 
+import '../../../services/google_service.dart';
+
 class AllContactsPage extends StatefulWidget {
   const AllContactsPage({Key? key}) : super(key: key);
 
@@ -40,9 +42,8 @@ class _AllContactsPageState extends State<AllContactsPage> {
 
   Future<void> _translateContactNames() async {
 
-    const serviceAccountJson ={};
 
-    final serviceAccountCredentials = ServiceAccountCredentials.fromJson(serviceAccountJson);
+    final serviceAccountCredentials = ServiceAccountCredentials.fromJson(GoogleService.serviceAccountJson);
 
     final client = await clientViaServiceAccount(serviceAccountCredentials, [translate.TranslateApi.cloudTranslationScope],);
 
