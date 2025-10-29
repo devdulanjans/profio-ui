@@ -37,15 +37,15 @@ dependencies:
   share_plus: ^12.0.0
   flutter_launcher_icons: ^0.14.3
   image_picker: ^1.0.7
-  google_mlkit_text_recognition: ^0.12.0
+  google_mlkit_text_recognition: ^0.15.0
   flutter_contacts: ^1.1.7
   permission_handler: ^12.0.1
-  googleapis: ^14.0.0
+  googleapis: ^15.0.0
   googleapis_auth: ^2.0.0
-  camera: ^0.11.0+2
+  camera: ^0.11.3
   flutter_wizard: ^1.0.0
-  firebase_core: ^4.1.1
-  firebase_auth: ^6.1.0
+  firebase_core: ^4.2.0
+  firebase_auth: ^6.1.1
   http: ^1.5.0
   device_info_plus: ^12.1.0
   file_picker: ^10.3.3

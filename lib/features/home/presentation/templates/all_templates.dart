@@ -169,7 +169,7 @@ class _AllTemplatesPageState extends State<AllTemplatesPage> {
                               ),
                             ),
                             width: double.infinity, // Ensure it spans the entire width of the card
-                            height: 105, // Set the height to 100 as per your requirement
+                            height: 110, // Set the height to 100 as per your requirement
                           ),
                           // Content inside the card, overlaying on top of the image
                           Positioned.fill(
@@ -277,6 +277,7 @@ class _AllTemplatesPageState extends State<AllTemplatesPage> {
                               ),
                             ),
                           ),
+
                         ],
                       ),
                     ),

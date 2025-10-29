@@ -3,7 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
 import 'package:googleapis/translate/v3.dart' as translate;
 import 'package:googleapis_auth/auth_io.dart';
-
+import 'package:provider/provider.dart';
+import '../../../../providers/locale_provider.dart';
 import '../../../services/google_service.dart';
 
 class AllContactsPage extends StatefulWidget {
@@ -17,30 +18,74 @@ class _AllContactsPageState extends State<AllContactsPage> {
   List<Contact> _contacts = [];
   bool _isLoading = true;
   final _translatedNames = <String>[];
+  String appLanguage = "en";
+  late LocaleProvider localeProvider;
+  late VoidCallback listener;
 
   @override
   void initState() {
     super.initState();
-    _fetchContacts();
+     _fetchContacts(appLanguage);
+
+    listener = () {
+      if (mounted) {
+        appLanguage = localeProvider.currentLanguageCode ?? "";
+        print("LanguageChanged:${appLanguage} -- ${localeProvider.currentLanguage}");
+        _fetchContacts(appLanguage);
+      }
+    };
+
+    // ✅ Safe way to access Provider after the first frame
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      localeProvider = Provider.of<LocaleProvider>(context, listen: false);
+      localeProvider.addListener(listener);
+    });
   }
 
-  Future<void> _fetchContacts() async {
-    if (await FlutterContacts.requestPermission()) {
-      final contacts = await FlutterContacts.getContacts(withProperties: true);
-      if (!mounted) return; // ✅ Check before updating UI
+  Future<void> _fetchContacts(String lng) async {
+    try {
+      // Request permission
       setState(() {
-        _contacts = contacts;
+        _isLoading = true;
       });
-      await _translateContactNames();
-    } else {
-      if (!mounted) return; // ✅ Check before updating UI
+      if (await FlutterContacts.requestPermission()) {
+        // Fetch contacts with their properties
+       final contacts = await FlutterContacts.getContacts(withProperties: true);
+
+        // List<Contact> contacts = [];
+        if (!mounted) return; // Check before updating UI
+        setState(() {
+          _contacts = contacts;
+        });
+
+        // Translate contact names
+        await _translateContactNames(lng);
+      }
+      else {
+        if (!mounted) return;
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    } catch (e, stack) {
+      // Handle errors gracefully
+      debugPrint('❌ Error fetching contacts: $e');
+      debugPrint('$stack');
+
+      if (!mounted) return;
       setState(() {
         _isLoading = false;
       });
+
+      // Optional: notify user
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to load contacts. Please try again.')),
+      );
     }
   }
 
-  Future<void> _translateContactNames() async {
+
+  Future<void> _translateContactNames(String lng) async {
 
 
     final serviceAccountCredentials = ServiceAccountCredentials.fromJson(GoogleService.serviceAccountJson);
@@ -55,7 +100,7 @@ class _AllContactsPageState extends State<AllContactsPage> {
         final response = await translateApi.projects.translateText(
           translate.TranslateTextRequest(
             contents: [name],
-            targetLanguageCode: 'ja', // Replace with your target language code
+            targetLanguageCode: lng, // Replace with your target language code
           ),
           'projects/profio-473307/locations/global', // Replace with your Google Cloud project ID
         );

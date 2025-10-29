@@ -197,7 +197,8 @@ class _HomePageState extends State<HomePage> {
 
   final List<Widget> _pages = [
     UserProfilePage(),           // 0
-    MyCreatedProfilesScreen(),   // 1
+    // MyCreatedProfilesScreen(),   // 1
+    AllTemplatesPage(),
     // ProfileSetupPage(),
     OCRScannerPage(),            // 2
     AllContactsPage(),           // 3
