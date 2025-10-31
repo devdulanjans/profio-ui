@@ -1,5 +1,5 @@
 import 'dart:io';
-import 'dart:math';
+import 'dart:developer';
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -17,6 +17,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 
 import 'package:provider/provider.dart';
 import '../../../../providers/locale_provider.dart';
+import 'package:webview_flutter/webview_flutter.dart';
 
 
 
@@ -437,28 +438,105 @@ class _AllTemplatesPageState extends State<AllTemplatesPage> {
     required String htmlTemplate,
     required Map<String, dynamic> data,
   }) {
-    final renderedHtml = renderHtmlContent(html: htmlTemplate,data: data,selectedLang: appLanguage);
+    final renderedHtml = renderHtmlContent(
+      html: htmlTemplate,
+      data: data,
+      selectedLang: appLanguage,
+    );
+
+    bool isLoading = true;
+    final controller = WebViewController()
+      ..setBackgroundColor(const Color(0x00000000))
+      ..setNavigationDelegate(
+        NavigationDelegate(
+          onPageFinished: (url) {
+            // When HTML is done rendering
+            isLoading = false;
+          },
+        ),
+      )
+      ..loadHtmlString(renderedHtml);
 
     showDialog(
       context: context,
+      barrierDismissible: true,
       builder: (BuildContext context) {
-        return Dialog(
-          backgroundColor: Colors.transparent,
-          insetPadding: const EdgeInsets.all(16),
-          child: Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: SingleChildScrollView(
-              child: Html(data: renderedHtml),
-            ),
-          ),
+        final height = MediaQuery.of(context).size.height * 0.9;
+
+        return StatefulBuilder(
+          builder: (context, setState) {
+            // Update when loading finishes
+            controller.setNavigationDelegate(
+              NavigationDelegate(
+                onPageFinished: (url) {
+                  setState(() => isLoading = false);
+                },
+              ),
+            );
+
+            return Dialog(
+              backgroundColor: Colors.transparent,
+              insetPadding: const EdgeInsets.all(16),
+              child: Container(
+                padding: EdgeInsets.zero,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Stack(
+                  children: [
+                    // WebView
+                    SizedBox(
+                      width: double.maxFinite,
+                      height: height,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: WebViewWidget(controller: controller),
+                      ),
+                    ),
+
+                    // Loading overlay
+                    if (isLoading)
+                      Container(
+                        width: double.infinity,
+                        height: height,
+                        alignment: Alignment.center,
+                        color: Colors.white.withOpacity(0.7),
+                        child: const CircularProgressIndicator(),
+                      ),
+
+                    // Close button
+                    Positioned(
+                      top: 8,
+                      right: 8,
+                      child: Material(
+                        color: Colors.white,
+                        shape: const CircleBorder(),
+                        elevation: 3,
+                        child: InkWell(
+                          customBorder: const CircleBorder(),
+                          onTap: () => Navigator.pop(context),
+                          child: const Padding(
+                            padding: EdgeInsets.all(8),
+                            child: Icon(
+                              Icons.close,
+                              size: 20,
+                              color: Colors.black54,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
         );
       },
     );
   }
+
 
   void _showConfirmationDialog(BuildContext context,String templateId) {
     showDialog(
