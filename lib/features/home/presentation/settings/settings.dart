@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:profio/core/constants/app_strings.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/helpers/global_helper.dart';
+import '../../../../core/models/subscription.dart';
 import '../../../../providers/locale_provider.dart';
 import '../../../services/AuthService.dart';
 import '../home/home_page.dart';
@@ -191,6 +193,8 @@ class SettingsList extends StatelessWidget {
                     if((subtopic['key'] ?? "") == 'logout_account'){
                       GlobalHelper().progressDialog(context,"Signing out","Signing out, please wait...");
                       final user = await _authService.signOut();
+                      appUserId = "";
+                      userSubscribedPlan = Subscription(id: "NONE");
                       Navigator.of(context).pop();
                       Navigator.pushNamedAndRemoveUntil(context, '/login', (Route<dynamic> route) => false);
                     }else{
