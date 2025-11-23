@@ -8,6 +8,7 @@ import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:googleapis/connectors/v1.dart' hide Provider;
 import 'package:path_provider/path_provider.dart';
 import 'package:profio/core/helpers/global_helper.dart';
+import 'package:profio/features/services/api_constants.dart';
 import 'package:profio/features/services/api_service.dart';
 import 'package:share_plus/share_plus.dart';
 
@@ -452,6 +453,8 @@ class _AllTemplatesPageState extends State<AllTemplatesPage> {
       selectedLang: appLanguage,
     );
 
+    log("CheckHtml:${renderedHtml}");
+
     bool isLoading = true;
     final controller = WebViewController()
       ..setBackgroundColor(const Color(0x00000000))
@@ -631,11 +634,15 @@ String renderHtmlContent({
 
   return html.replaceAllMapped(regex, (match) {
     final key = match.group(1)!;
-
+    // log("CheckUSerData:${data}");
+    log("CheckValue-Before:${key}");
     if (!data.containsKey(key)) return '';
 
     final value = data[key];
-
+    log("CheckValue:${value} -- ${key}");
+    if(key == "profileImageURL"){
+      return fetchImage(data['_id'] ?? "","PROFILE", value);
+    }
     if (value is String) {
       return value;
     } else if (value is Map<String, dynamic>) {
