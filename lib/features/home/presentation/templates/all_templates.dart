@@ -155,133 +155,141 @@ class _AllTemplatesPageState extends State<AllTemplatesPage> {
                       _showFullImage(context,template.previewImage ?? "");
                     },
                     child: Card(
-                      margin: const EdgeInsets.all(8),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      elevation: 5,
-                      child: Stack(
-                        children: [
-                          // Background image as a full card background
-                          Container(
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(12),
-                              image: DecorationImage(
-                                image: NetworkImage(template.previewImage ?? ""), // Ensure the URL is valid
-                                fit: BoxFit.cover, // Make sure it covers the whole card
-                              ),
-                            ),
-                            width: double.infinity, // Ensure it spans the entire width of the card
-                            height: 110, // Set the height to 100 as per your requirement
+                      margin: const EdgeInsets.all(12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      elevation: 6,
+                      child: Container(
+                        height: 400, // NEW HEIGHT
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(16),
+                          image: DecorationImage(
+                            image: NetworkImage(template.previewImage ?? ""),
+                            fit: BoxFit.cover,
                           ),
-                          // Content inside the card, overlaying on top of the image
-                          Positioned.fill(
-                            child: Container(
-                              decoration: BoxDecoration(
-                                color: Colors.black.withOpacity(0.5), // Dark overlay for visibility
-                                borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(16),
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [
+                                Colors.black.withOpacity(0.1),
+                                Colors.black.withOpacity(0.4),
+                                Colors.black.withOpacity(0.7),
+                              ],
+                            ),
+                          ),
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // ---------- TOP TITLE ----------
+                              Text(
+                                template.name ?? "Template Name",
+                                style: const TextStyle(
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
-                              padding: const EdgeInsets.all(8), // Reduced padding for smaller card
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  // Title and description
-                                  Text(
-                                    template.name ?? "Template Name", // Use a fallback for null name
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 16, // Smaller font size for title
-                                      color: Colors.white,
-                                    ),
-                                    overflow: TextOverflow.ellipsis,
-                                    maxLines: 1,
-                                  ),
-                                  const SizedBox(height: 4), // Reduced space between title and description
-                                  Text(
-                                    template.description ?? "Template Description", // Use a fallback for null description
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 12, // Smaller font size for description
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                    maxLines: 2,
-                                  ),
-                                  Spacer(),
-                                  // Row of action icons (Eye and Checked icons inside circular avatars)
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.end,
-                                    children: [
-                                      // Eye icon for preview inside a circular avatar
-                                      Visibility(
-                                        visible: template.isAlreadySelected ?? false,
-                                        child: GestureDetector(
-                                          onTap: () {
-                                            // _showFullImage(context, template.previewImage ?? "");
-                                            showHtmlDialog(context:context,htmlTemplate:  template.htmlContent ?? "",data: userDetails ?? {});
-                                          },
-                                          child: CircleAvatar(
-                                            radius: 16, // Avatar size
-                                            backgroundColor: Colors.black.withOpacity(0.6),
-                                            child: const Icon(
-                                              Icons.visibility,
-                                              color: Colors.white,
-                                              size: 20, // Icon size inside the avatar
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      // Checked/Add icon inside a circular avatar
-                                      GestureDetector(
-                                        onTap:!(template.isAlreadySelected ?? false) ?  () {
-                                          if((userSubscribedPlan.cardTemplateLimit ?? 1) > selectedTemplateCount){
-                                            selectTemplate(context, template.id ?? "");
-                                          }else{
-                                            ScaffoldMessenger.of(context).showSnackBar(
-                                              SnackBar(content: Text("${getText("template_limit_reached")} $warmingIcon")),
-                                            );
-                                          }
+                              const SizedBox(height: 8),
 
-                                        }:null,
-                                        child: CircleAvatar(
-                                          radius: 16, // Avatar size
-                                          backgroundColor: (template.isAlreadySelected ?? false)
-                                              ? Colors.green
-                                              : Colors.blueAccent,
-                                          child: Icon(
-                                            (template.isAlreadySelected ?? false)
-                                                ? Icons.check_circle
-                                                : Icons.add_circle_outline,
-                                            color: Colors.white,
-                                            size: 20, // Icon size inside the avatar
-                                          ),
-                                        ),
+                              // ---------- DESCRIPTION ----------
+                              Text(
+                                template.description ?? "Template Description",
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.white70,
+                                  height: 1.4,
+                                ),
+                                maxLines: 4,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+
+                              const Spacer(),
+
+                              // ---------- BOTTOM ACTION BUTTONS ----------
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.end,
+                                children: [
+                                  // Preview icon
+                                  Visibility(
+                                    visible: template.isAlreadySelected ?? false,
+                                    child: GestureDetector(
+                                      onTap: () {
+                                        showHtmlDialog(
+                                          context: context,
+                                          htmlTemplate: template.htmlContent ?? "",
+                                          data: userDetails ?? {},
+                                        );
+                                      },
+                                      child: CircleAvatar(
+                                        radius: 20,
+                                        backgroundColor: Colors.black.withOpacity(0.6),
+                                        child: const Icon(Icons.visibility, color: Colors.white),
                                       ),
-                                      const SizedBox(width: 8),
-                                      Visibility(
-                                        visible: template.isAlreadySelected ?? false,
-                                        child: GestureDetector(
-                                          onTap: () {
-                                            _showConfirmationDialog(context,template.id ?? "");
-                                          },
-                                          child: CircleAvatar(
-                                            radius: 16, // Avatar size
-                                            backgroundColor:Colors.orange,
-                                            child: Icon(Icons.share_rounded,
-                                              color: Colors.white,
-                                              size: 20, // Icon size inside the avatar
-                                            ),
-                                          ),
-                                        ),
+                                    ),
+                                  ),
+
+                                  SizedBox(width: 12),
+
+                                  // Add / Selected icon
+                                  GestureDetector(
+                                    onTap: !(template.isAlreadySelected ?? false)
+                                        ? () {
+                                      if ((userSubscribedPlan.cardTemplateLimit ?? 1) >
+                                          selectedTemplateCount) {
+                                        selectTemplate(context, template.id ?? "");
+                                      } else {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(
+                                              content: Text(
+                                                  "${getText("template_limit_reached")} $warmingIcon")),
+                                        );
+                                      }
+                                    }
+                                        : null,
+                                    child: CircleAvatar(
+                                      radius: 20,
+                                      backgroundColor: (template.isAlreadySelected ?? false)
+                                          ? Colors.green
+                                          : Colors.blueAccent,
+                                      child: Icon(
+                                        (template.isAlreadySelected ?? false)
+                                            ? Icons.check_circle
+                                            : Icons.add_circle_outline,
+                                        color: Colors.white,
                                       ),
-                                    ],
+                                    ),
+                                  ),
+
+                                  SizedBox(width: 12),
+
+                                  // Share icon
+                                  Visibility(
+                                    visible: template.isAlreadySelected ?? false,
+                                    child: GestureDetector(
+                                      onTap: () {
+                                        _showConfirmationDialog(context, template.id ?? "");
+                                      },
+                                      child: CircleAvatar(
+                                        radius: 20,
+                                        backgroundColor: Colors.orange,
+                                        child: const Icon(Icons.share_rounded,
+                                            color: Colors.white),
+                                      ),
+                                    ),
                                   ),
                                 ],
                               ),
-                            ),
+                            ],
                           ),
-
-                        ],
+                        ),
                       ),
-                    ),
+                    )
                   ),
                 ),
               );

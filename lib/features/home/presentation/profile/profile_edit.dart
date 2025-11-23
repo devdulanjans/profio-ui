@@ -1,9 +1,12 @@
 
 
+import 'dart:io';
+
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_wizard/flutter_wizard.dart';
 import 'package:googleapis_auth/auth_io.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:profio/features/services/api_constants.dart';
 import 'package:profio/features/services/api_service.dart';
 
@@ -246,6 +249,86 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
 
 
 
+  Future<void> pickImageCrossPlatform(BuildContext context) async {
+    PlatformFile? pickedPlatformFile;
+
+    if (Platform.isIOS) {
+      // iOS: use image_picker for Photos
+      final ImagePicker picker = ImagePicker();
+      final XFile? pickedImage = await picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1800,
+        maxHeight: 1800,
+        imageQuality: 80,
+      );
+
+      if (pickedImage == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("⚠️ ${getText("permission_denied")}")),
+        );
+        return;
+      }
+
+      final file = File(pickedImage.path);
+      final fileSizeInMB = await file.length() / (1024 * 1024);
+
+      if (fileSizeInMB > 20) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("⚠️ ${getText("file_size_exceeded")}")),
+        );
+        return;
+      }
+
+      // Convert File/XFile to PlatformFile
+      pickedPlatformFile = PlatformFile(
+        name: pickedImage.name,       // file name
+        path: pickedImage.path,       // file path
+        size: await file.length(),    // file size in bytes
+        bytes: await file.readAsBytes(), // optional, if you need bytes
+      );
+
+    } else {
+      // ANDROID: use FilePicker
+      final hasPermission = await PermissionHandler.requestPermissionBrowseFile(context);
+      if (!hasPermission) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("⚠️ ${getText("permission_denied")}")),
+        );
+        return;
+      }
+
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['jpg', 'jpeg', 'png'],
+        withData: true,
+      );
+
+      if (result == null || result.files.isEmpty) return;
+
+      final file = result.files.first;
+      final fileSizeInMB = file.size / (1024 * 1024);
+
+      if (fileSizeInMB > 20) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("⚠️ ${getText("file_size_exceeded")}")),
+        );
+        return;
+      }
+
+      pickedPlatformFile = file;
+    }
+
+    // Update state
+    if (pickedPlatformFile != null) {
+      setState(() {
+        _pickedFile = pickedPlatformFile;
+      });
+    }
+  }
+
+
+
+
   void _removeLink(int index) {
     setState(() {
       otherLinks.removeAt(index);
@@ -273,36 +356,7 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
             const SizedBox(height: 8),
             GestureDetector(
               onTap: () async {
-                final hasPermission = await PermissionHandler.requestPermissionBrowseFile(context);
-
-                if (!hasPermission) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text("⚠️ ${getText("permission_denied")}")),
-                  );
-                  return;
-                }
-
-                final result = await FilePicker.platform.pickFiles(
-                  type: FileType.custom,
-                  allowedExtensions: ['jpg', 'jpeg', 'png'],
-                  withData: true,
-                );
-
-                if (result != null && result.files.isNotEmpty) {
-                  final file = result.files.first;
-                  final fileSizeInMB = file.size / (1024 * 1024);
-
-                  if (fileSizeInMB > 20) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text("⚠️ ${getText("file_size_exceeded")}")),
-                    );
-                    return;
-                  }
-
-                  setState(() {
-                    _pickedFile = file;
-                  });
-                }
+                pickImageCrossPlatform(context);
               },
               child: Container(
                 width: 60,

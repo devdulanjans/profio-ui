@@ -1,3 +1,4 @@
+import 'dart:developer';
 import 'dart:io';
 
 import 'package:device_info_plus/device_info_plus.dart';
@@ -8,31 +9,25 @@ import 'package:permission_handler/permission_handler.dart';
 class PermissionHandler {
 
   static Future<bool> requestPermissionBrowseFile(BuildContext context) async {
-    Permission permission;
-
-    if (Platform.isAndroid) {
-// Assume Android 13+ for this example, adjust if needed
-      permission = await _getAndroidFilePermission();
-    }
-    else if (Platform.isIOS) {
-      permission = Permission.photos; // or just return true if using FilePicker
-    } else {
+    if (Platform.isIOS) {
+      // iOS: image_picker handles permission automatically
       return true;
     }
 
+    // ANDROID
+    Permission permission = await _getAndroidFilePermission();
     PermissionStatus status = await permission.status;
+    log("Android Permission Status: $status");
 
-    if (status.isGranted) {
-      return true;
-    }
+    if (status.isGranted) return true;
 
     if (status.isDenied || status.isRestricted) {
       final result = await permission.request();
-      return result.isGranted;
+      log("Android Permission Request Result: $result");
+      if (result.isGranted) return true;
     }
 
     if (status.isPermanentlyDenied) {
-// Show dialog to open app settings
       final openSettings = await showDialog<bool>(
         context: context,
         builder: (context) => AlertDialog(
@@ -55,16 +50,16 @@ class PermissionHandler {
 
       if (openSettings == true) {
         await openAppSettings();
-// Wait and re-check after returning from settings
         await Future.delayed(const Duration(seconds: 1));
-        return await permission.status.isGranted;
-      } else {
-        return false;
+        status = await permission.status;
+        return status.isGranted;
       }
+      return false;
     }
 
     return false;
   }
+
 
   static Future<Permission> _getAndroidFilePermission() async {
     if (Platform.isAndroid) {

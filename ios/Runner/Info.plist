@@ -45,10 +45,17 @@
 		<string>UIInterfaceOrientationPortrait</string>
 		<string>UIInterfaceOrientationPortraitUpsideDown</string>
 	</array>
-	<key>NSCameraUsageDescription</key>
-    <string>This app requires access to the camera to allow users to take photos for their profile.</string>
+	<!-- Camera Permission -->
+    <key>NSCameraUsageDescription</key>
+    <string>This app requires access to the camera to capture photos.</string>
+
+    <!-- Gallery / Photo Library Permission -->
     <key>NSPhotoLibraryUsageDescription</key>
-    <string>This app requires access to your photo library to allow users to select photos for their profile.</string>
+    <string>This app requires access to your photos to pick images.</string>
+
+    <!-- Optional: Permission to Save Images to Gallery -->
+    <key>NSPhotoLibraryAddUsageDescription</key>
+    <string>This app needs permission to save photos to your library.</string>
 
 </dict>
 </plist>
