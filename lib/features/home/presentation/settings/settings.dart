@@ -194,6 +194,7 @@ class SettingsList extends StatelessWidget {
                       GlobalHelper().progressDialog(context,"Signing out","Signing out, please wait...");
                       final user = await _authService.signOut();
                       appUserId = "";
+                      isProfileCompleted = false;
                       userSubscribedPlan = Subscription(id: "NONE");
                       Navigator.of(context).pop();
                       Navigator.pushNamedAndRemoveUntil(context, '/login', (Route<dynamic> route) => false);

@@ -45,7 +45,7 @@ class _SignupPageState extends State<SignupPage> {
         setState(() => _isLoading = true);
 
         // Show loader dialog
-        GlobalHelper().progressDialog(context,"Signing In","Signing you in, please wait...");
+        GlobalHelper().progressDialog(context,"Signup","Registering Your Account, please wait...");
         final user = await _authService.signUpWithEmailPassword(_emailController.text, _passwordController.text);
         if (user != null) {
          // String? idToken = await user.getIdToken(); //

@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../../../core/constants/app_strings.dart';
+import '../../../../core/helpers/global_helper.dart';
 import '../../../../core/theme/app_text.dart';
 import '../../../../providers/locale_provider.dart';
 import '../../../../providers/theme_provider.dart';
 import '../../../services/AuthService.dart';
+import '../../../services/api_service.dart';
 
 class LoginPage extends StatelessWidget {
   const LoginPage({super.key});
@@ -132,11 +135,15 @@ class LoginPage extends StatelessWidget {
                             SnackBar(content: Text("⚠️ Please enter password.")),
                           );
                         }else{
+                          GlobalHelper().progressDialog(context,"Signing In","Signing you in, please wait...");
                           final user = await _authService.signInWithEmailPassword(_email.text, _password.text);
                           if (user != null) {
-                            print("CheckUserObject:${user}");
+                            await getUserDetails();
+                            print("CheckUserObject:${user} - ${isProfileCompleted}");
+                            Navigator.pop(context); // close loader
                             Navigator.pushReplacementNamed(context, '/home');
                           }else{
+                            Navigator.pop(context); // close loader
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(content: Text("❌ Login failed")),
                             );
@@ -186,5 +193,16 @@ class LoginPage extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+Future<void> getUserDetails() async{
+  Map<String,dynamic> user = await getUserByUUID() ?? {};
+  var userName = (user['name'] ?? {}).toString();
+  var phoneNumber = user['phoneNumber'] ?? "";
+  if(userName == "{}" || phoneNumber == ""){
+    isProfileCompleted = false;
+  }else{
+    isProfileCompleted = true;
   }
 }

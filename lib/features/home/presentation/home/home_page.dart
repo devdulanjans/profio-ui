@@ -135,7 +135,10 @@
 //   }
 // }
 
+import 'dart:developer';
+
 import 'package:flutter/material.dart';
+import 'package:googleapis/mybusinessbusinessinformation/v1.dart';
 import 'package:profio/features/home/presentation/home/user_profile_page.dart';
 import 'package:profio/features/services/api_service.dart';
 import 'package:provider/provider.dart';
@@ -284,8 +287,10 @@ class _HomePageState extends State<HomePage> {
     if(appUserId == ""){
       Map<String,dynamic> user = await getUserByUUID() ?? {};
       if(user != {}){
+        log("CheckUserDetails:${user}");
         appUserId = user['_id'] ?? "";
         getUserSubscriptionType(user["subscriptionId"] ?? "");
+        print("ProfileIsCompleted:${isProfileCompleted}");
       }
     }
 
@@ -309,7 +314,7 @@ class _HomePageState extends State<HomePage> {
     return Scaffold(
       appBar: AppBar(
         leading: Visibility(
-          visible: widget.parentPageId != 0,
+          visible: widget.parentPageId != 0 && isProfileCompleted,
           child: IconButton(
             icon: const Icon(Icons.arrow_back),
             onPressed: () {

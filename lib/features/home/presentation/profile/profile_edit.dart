@@ -1,9 +1,11 @@
 
 
+import 'dart:developer';
 import 'dart:io';
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_wizard/flutter_wizard.dart';
 import 'package:googleapis_auth/auth_io.dart';
 import 'package:image_picker/image_picker.dart';
@@ -16,9 +18,11 @@ import '../../../../core/helpers/permission_handler.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:googleapis/translate/v3.dart' as translate;
 import 'package:provider/provider.dart';
+import '../../../../core/models/subscription.dart';
 import '../../../../providers/locale_provider.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 
+import '../../../services/AuthService.dart';
 import '../../../services/google_service.dart';
 
 
@@ -211,7 +215,36 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
                   child: OutlinedButton(
                     onPressed: () {
                       if (_currentStep == 0) {
-                        Navigator.of(context).pop(); // go back to previous screen
+                        if (isProfileCompleted) {
+                          Navigator.of(context).pop();
+                        } else {
+                          showDialog(
+                            context: context,
+                            barrierDismissible: false,
+                            builder: (context) {
+                              return AlertDialog(
+                                title: Text("Exit App?"),
+                                content: Text("Your profile is not completed. Do you want to exit the app?",style: TextStyle(color: Colors.black),),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () {
+                                      Navigator.of(context).pop(); // close dialog only
+                                    },
+                                    child: Text("Cancel"),
+                                  ),
+                                  TextButton(
+                                    onPressed: () {
+                                      Navigator.of(context).pop(); // close dialog
+                                      SystemNavigator.pop();       // exit app
+                                    },
+                                    child: Text("Exit"),
+                                  ),
+                                ],
+                              );
+                            },
+                          );
+                        }
+
                       } else {
                         setState(() {
                           _currentStep -= 1; // go back one step in wizard
@@ -340,45 +373,74 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
   Widget _buildPersonalDetails() {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(localeProvider.getText(key: 'personal_details'), style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold,color: Colors.black)),
-        const SizedBox(height: 16),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-             Text(getText("profile_photo"),
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: Colors.black87,
-              ),
-            ),
-            const SizedBox(height: 8),
-            GestureDetector(
-              onTap: () async {
-                pickImageCrossPlatform(context);
-              },
-              child: Container(
-                width: 60,
-                height: 60,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(color: Colors.green, width: 1.5),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            localeProvider.getText(key: 'personal_details'),
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black),
+          ),
+          const SizedBox(height: 16),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                getText("profile_photo"),
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black87,
                 ),
-                child: _buildProfileImage(),
+              ),
+              const SizedBox(height: 8),
+              GestureDetector(
+                onTap: () async {
+                  pickImageCrossPlatform(context);
+                },
+                child: Container(
+                  width: 60,
+                  height: 60,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.green, width: 1.5),
+                  ),
+                  child: _buildProfileImage(),
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 20),
+          _textField(getText("full_name"), uNameController),
+          _textField(getText("personal_email"), uEmailController, type: TextInputType.emailAddress),
+          _textField(getText("phone_number"), uPhoneController, type: TextInputType.phone),
+          _textField(getText("personal_address"), uAddressController, type: TextInputType.streetAddress),
+          _textField(getText("personal_website"), uWebSiteController, type: TextInputType.twitter, isLastField: true),
+
+          // ✅ Conditional Logout Button
+          if (!isProfileCompleted) ...[
+            SizedBox(height: 30),
+            Center(
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  logOut(context);
+                },
+                icon: Icon(Icons.logout),
+                label: Text(getText("logout")),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red,
+                  padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
               ),
             ),
           ],
-        ),
-        SizedBox(height: 20,),
-        _textField(getText("full_name"),uNameController ),
-        _textField(getText("personal_email"), uEmailController,type: TextInputType.emailAddress),
-        _textField(getText("phone_number"), uPhoneController,type: TextInputType.phone),
-        _textField(getText("personal_address"), uAddressController,type: TextInputType.streetAddress),
-        _textField(getText("personal_website"), uWebSiteController,type: TextInputType.twitter,isLastField: true),
-      ]),
+        ],
+      ),
     );
   }
+
 
 
   Widget _buildProfileImage() {
@@ -1052,6 +1114,7 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
 
   void updateResult(int type){
     String message = "";
+    bool isSuccess = false;
 
     switch (type) {
       case 1:
@@ -1065,13 +1128,24 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
         break;
       case 4:
         message = '${getText("profile_update_success")} ✅';
+        isSuccess = true;
         break;
       default:
         message = getText("something_wrong");
     }
 
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)),);
-    Navigator.of(context)..pop()..pop();
+    if(!isProfileCompleted){
+      Navigator.of(context).pop();
+      if(isSuccess){
+        isProfileCompleted = true;
+        Navigator.pushReplacementNamed(context, '/home');
+      }
+
+    }else{
+      Navigator.of(context)..pop()..pop();
+    }
+
   }
 
 
@@ -1098,12 +1172,16 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
 
     for (var field in translatableFields) {
       if (originalData[field] is Map) {
-        String originalText = originalData[field][inputLang];
+        String originalText = originalData[field][inputLang] ?? "";
 
         for (var lang in targetLanguages) {
           if (lang != inputLang) {
-            final translatedText = await _googleTranslateText(api, parent, originalText, inputLang, lang);
-            translatedData[field][lang] = translatedText;
+            log('CheckOriginalText:${originalText}');
+            if((originalText ?? "") != ""){
+              final translatedText = await _googleTranslateText(api, parent, originalText, inputLang, lang);
+              translatedData[field][lang] = translatedText;
+            }
+
           }
         }
       }
@@ -1145,6 +1223,7 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
       mimeType: 'text/plain',
     );
 
+    log("CheckRequest:${request}");
     final response = await api.projects.locations.translateText(request, parent);
 
     return response.translations?.first.translatedText ?? '[Translation failed]';
@@ -1388,6 +1467,18 @@ bool isDocumentShouldVisible(int documentCount){
 
 int documentUploadLimit(){
   return (userSubscribedPlan.id ?? "NONE") != "NONE" ? (userSubscribedPlan.documentUploadLimit ?? 2) : 2; // assume for default its 2
+}
+
+
+void logOut(BuildContext context) async{
+  GlobalHelper().progressDialog(context,"Signing out","Signing out, please wait...");
+  final AuthService _authService = AuthService();
+  final user = await _authService.signOut();
+  appUserId = "";
+  isProfileCompleted = false;
+  userSubscribedPlan = Subscription(id: "NONE");
+  Navigator.of(context).pop();
+  Navigator.pushNamedAndRemoveUntil(context, '/login', (Route<dynamic> route) => false);
 }
 
 
