@@ -510,8 +510,8 @@ class LocaleProvider with ChangeNotifier {
         AppLanguage.japanese: "プロフィール更新に失敗しました ❌",
       },
       'profile_update_success': {
-        AppLanguage.english: "Profile Update Successfully ✅",
-        AppLanguage.japanese: "プロフィールが正常に更新されました ✅",
+        AppLanguage.english: "Profile Update Successfully ",
+        AppLanguage.japanese: "プロフィールが正常に更新されました ",
       },
       'something_wrong': {
         AppLanguage.english: "Something went wrong, Please try again.",
@@ -667,6 +667,8 @@ class LocaleProvider with ChangeNotifier {
         AppLanguage.english: "Template link generation failed",
         AppLanguage.japanese: "テンプレートのリンク生成に失敗しました。",
       },
+
+
 
 
     };

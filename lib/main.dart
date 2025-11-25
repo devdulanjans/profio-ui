@@ -3,6 +3,7 @@ import 'dart:developer';
 
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:profio/features/home/presentation/templates/all_templates.dart';
 import 'package:provider/provider.dart';
 import 'core/constants/app_strings.dart';
 import 'features/home/presentation/auth/login_page.dart';
@@ -49,6 +50,12 @@ class MyApp extends StatelessWidget {
             return MaterialPageRoute(builder: (_) => const LoginPage());
           case '/SignUp':
             return MaterialPageRoute(builder: (_) => const SignupPage());
+          case '/all_template':
+            return MaterialPageRoute(builder: (_) =>  const HomePage(parentPageId: 120));
+          case '/profile':
+            return MaterialPageRoute(builder: (_) =>  const HomePage(parentPageId: 101));
+          case '/payment':
+            return MaterialPageRoute(builder: (_) =>  const HomePage(parentPageId: 100));
           case '/home':
           // Evaluate condition at runtime
             log("CheckRoute:${isLoggedIn} -- ${ServiceHelper.isProfileCompleted }");

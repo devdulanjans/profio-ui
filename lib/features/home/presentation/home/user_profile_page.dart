@@ -563,6 +563,389 @@ import '../../../../providers/locale_provider.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 
+//
+// class UserProfilePage extends StatefulWidget {
+//   const UserProfilePage({super.key});
+//
+//   @override
+//   State<UserProfilePage> createState() => _UserProfilePageState();
+// }
+//
+// class _UserProfilePageState extends State<UserProfilePage> {
+//   late Future<List<Template>> templatesFuture;
+//   Map<String,dynamic> userDetails = {};
+//   String appLanguage = "en";
+//   late LocaleProvider localeProvider;
+//   late VoidCallback listener;
+//
+//   @override
+//   void initState() {
+//     super.initState();
+//     templatesFuture = getTemplates();
+//
+//     listener = () {
+//       if (mounted) {
+//         appLanguage = localeProvider.currentLanguageCode ?? "";
+//         print("LanguageChanged:${appLanguage} -- ${localeProvider.currentLanguage}");
+//       }
+//     };
+//
+//     // ✅ Safe way to access Provider after the first frame
+//     WidgetsBinding.instance.addPostFrameCallback((_) {
+//       localeProvider = Provider.of<LocaleProvider>(context, listen: false);
+//       localeProvider.addListener(listener);
+//     });
+//   }
+//
+//
+//   Future<List<Template>> getTemplates() async {
+//     List<Template> results = [];
+//     userDetails = await getUserByUUID();
+//     var allTemplates = await getAllTemplates(1);
+//     if(allTemplates.isNotEmpty){
+//       var userTemplates = await getAllTemplates(2);
+//       if (userTemplates.isNotEmpty) {
+//         results = allTemplates.where((allTemplate) {
+//           // Find a matching user template based on id
+//           var matchingUserTemplate = userTemplates.firstWhere(
+//                 (userTemplate) => userTemplate.id == allTemplate.id,
+//             orElse: () => Template(), // Empty template if no match
+//           );
+//
+//           if ((matchingUserTemplate.id ?? "").isNotEmpty) {
+//             // Found a match → mark selected
+//             allTemplate.isAlreadySelected = true;
+//             // Optionally assign userTemplateId
+//             // allTemplate.userTemplateId = matchingUserTemplate.userTemplateId ?? "";
+//             return true; // keep this template
+//           }
+//           return false; // skip if no match
+//         }).toList();
+//       }
+//       else{
+//         results = allTemplates;
+//       }
+//     }
+//
+//
+//
+//     return results;
+//   }
+//
+//   void refreshTemplates() {
+//     setState(() {
+//       templatesFuture = getTemplates(); // Call the future again
+//     });
+//   }
+//
+//
+//   @override
+//   Widget build(BuildContext context) {
+//     int selectedTemplateCount = 0;
+//     return FutureBuilder(
+//         future: templatesFuture,
+//         builder: (context, snapshot) {
+//           if (snapshot.connectionState == ConnectionState.waiting) {
+//             return const Center(child: CircularProgressIndicator());
+//           } else if (snapshot.hasError) {
+//             return Center(child: Text('❌ Error: ${snapshot.error}'));
+//           } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+//             return Center(child: Text(getText("no_templates_available")));
+//           }
+//
+//           final allTemplates = snapshot.data ?? [];
+//           int selectedTemplateCount = allTemplates.where((t) => t.isAlreadySelected ?? false).length;
+//
+//
+//
+//           return ListView.builder(
+//             itemCount: allTemplates.length,
+//             itemBuilder: (context, index) {
+//               // Create Template instance from JSON
+//               Template template = allTemplates[index];
+//
+//               return SlidableAutoCloseBehavior(
+//                 key: Key(template.id ?? ''),
+//                 closeWhenTapped: true,
+//                 child: GestureDetector(
+//                     onTap: (){
+//                       _showFullImage(context,template.previewImage ?? "");
+//                     },
+//                     child: Card(
+//                       margin: const EdgeInsets.all(12),
+//                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+//                       elevation: 6,
+//                       child: Container(
+//                         height: MediaQuery.of(context).size.height * 0.5, // NEW HEIGHT
+//                         decoration: BoxDecoration(
+//                           borderRadius: BorderRadius.circular(16),
+//                           image: DecorationImage(
+//                             image: NetworkImage(template.previewImage ?? ""),
+//                             fit: BoxFit.cover,
+//                           ),
+//                         ),
+//                         child: Container(
+//                           decoration: BoxDecoration(
+//                             borderRadius: BorderRadius.circular(16),
+//                             gradient: LinearGradient(
+//                               begin: Alignment.topCenter,
+//                               end: Alignment.bottomCenter,
+//                               colors: [
+//                                 Colors.black.withOpacity(0.1),
+//                                 Colors.black.withOpacity(0.4),
+//                                 Colors.black.withOpacity(0.7),
+//                               ],
+//                             ),
+//                           ),
+//                           padding: const EdgeInsets.all(16),
+//                           child: Column(
+//                             crossAxisAlignment: CrossAxisAlignment.start,
+//                             children: [
+//                               // ---------- TOP TITLE ----------
+//                               Text(
+//                                 template.name ?? "Template Name",
+//                                 style: const TextStyle(
+//                                   fontSize: 22,
+//                                   fontWeight: FontWeight.bold,
+//                                   color: Colors.white,
+//                                 ),
+//                                 maxLines: 1,
+//                                 overflow: TextOverflow.ellipsis,
+//                               ),
+//                               const SizedBox(height: 8),
+//
+//                               // ---------- DESCRIPTION ----------
+//                               Text(
+//                                 template.description ?? "Template Description",
+//                                 style: const TextStyle(
+//                                   fontSize: 14,
+//                                   color: Colors.white70,
+//                                   height: 1.4,
+//                                 ),
+//                                 maxLines: 4,
+//                                 overflow: TextOverflow.ellipsis,
+//                               ),
+//
+//                               const Spacer(),
+//
+//                               // ---------- BOTTOM ACTION BUTTONS ----------
+//                               Row(
+//                                 mainAxisAlignment: MainAxisAlignment.end,
+//                                 children: [
+//                                   // Preview icon
+//                                   Visibility(
+//                                     visible: template.isAlreadySelected ?? false,
+//                                     child: GestureDetector(
+//                                       onTap: () {
+//                                         showHtmlDialog(
+//                                           context: context,
+//                                           htmlTemplate: template.htmlContent ?? "",
+//                                           data: userDetails ?? {},
+//                                         );
+//                                       },
+//                                       child: CircleAvatar(
+//                                         radius: 20,
+//                                         backgroundColor: Colors.black.withOpacity(0.6),
+//                                         child: const Icon(Icons.visibility, color: Colors.white),
+//                                       ),
+//                                     ),
+//                                   ),
+//
+//                                   SizedBox(width: 12),
+//
+//                                   // Add / Selected icon
+//                                   GestureDetector(
+//                                     onTap: null,
+//                                     child: CircleAvatar(
+//                                       radius: 20,
+//                                       backgroundColor: (template.isAlreadySelected ?? false)
+//                                           ? Colors.green
+//                                           : Colors.blueAccent,
+//                                       child: Icon(
+//                                         (template.isAlreadySelected ?? false)
+//                                             ? Icons.check_circle
+//                                             : Icons.add_circle_outline,
+//                                         color: Colors.white,
+//                                       ),
+//                                     ),
+//                                   ),
+//
+//                                   SizedBox(width: 12),
+//
+//                                   // Share icon
+//                                   Visibility(
+//                                     visible: template.isAlreadySelected ?? false,
+//                                     child: GestureDetector(
+//                                       onTap: () {
+//                                         _showConfirmationDialog(context, template.id ?? "");
+//                                       },
+//                                       child: CircleAvatar(
+//                                         radius: 20,
+//                                         backgroundColor: Colors.orange,
+//                                         child: const Icon(Icons.share_rounded,
+//                                             color: Colors.white),
+//                                       ),
+//                                     ),
+//                                   ),
+//                                 ],
+//                               ),
+//                             ],
+//                           ),
+//                         ),
+//                       ),
+//                     )
+//                 ),
+//               );
+//             },
+//           );
+//         }
+//     );
+//   }
+//
+//
+//   String getText(String title){
+//     return localeProvider.getText(key: title);
+//   }
+//
+//
+//
+//
+//   // Function to show the full-size image
+//   void _showFullImage(BuildContext context, String imageUrl) {
+//     showDialog(
+//       context: context,
+//       builder: (context) =>
+//           Dialog(
+//             child: GestureDetector(
+//               onTap: () {
+//                 Navigator.of(context).pop(); // Close the dialog when tapped
+//               },
+//               child: InteractiveViewer(
+//                 child: Image.network(imageUrl),
+//               ),
+//             ),
+//           ),
+//     );
+//   }
+//
+//   void showHtmlDialog({
+//     required BuildContext context,
+//     required String htmlTemplate,
+//     required Map<String, dynamic> data,
+//   }) {
+//     final renderedHtml = renderHtmlContent(
+//       html: htmlTemplate,
+//       data: data,
+//       selectedLang: appLanguage,
+//     );
+//
+//     log("CheckHtml:${renderedHtml}");
+//
+//     bool isLoading = true;
+//     final controller = WebViewController()
+//       ..setBackgroundColor(const Color(0x00000000))
+//       ..setNavigationDelegate(
+//         NavigationDelegate(
+//           onPageFinished: (url) {
+//             // When HTML is done rendering
+//             isLoading = false;
+//           },
+//         ),
+//       )
+//       ..loadHtmlString(renderedHtml);
+//
+//     showDialog(
+//       context: context,
+//       barrierDismissible: true,
+//       builder: (BuildContext context) {
+//         final height = MediaQuery.of(context).size.height * 0.9;
+//
+//         return StatefulBuilder(
+//           builder: (context, setState) {
+//             // Update when loading finishes
+//             controller.setNavigationDelegate(
+//               NavigationDelegate(
+//                 onPageFinished: (url) {
+//                   setState(() => isLoading = false);
+//                 },
+//               ),
+//             );
+//
+//             return Dialog(
+//               backgroundColor: Colors.transparent,
+//               insetPadding: const EdgeInsets.all(16),
+//               child: Container(
+//                 padding: EdgeInsets.zero,
+//                 decoration: BoxDecoration(
+//                   color: Colors.white,
+//                   borderRadius: BorderRadius.circular(12),
+//                 ),
+//                 child: Stack(
+//                   children: [
+//                     // WebView
+//                     SizedBox(
+//                       width: double.maxFinite,
+//                       height: height,
+//                       child: ClipRRect(
+//                         borderRadius: BorderRadius.circular(12),
+//                         child: WebViewWidget(controller: controller),
+//                       ),
+//                     ),
+//
+//                     // Loading overlay
+//                     if (isLoading)
+//                       Container(
+//                         width: double.infinity,
+//                         height: height,
+//                         alignment: Alignment.center,
+//                         color: Colors.white.withOpacity(0.7),
+//                         child: const CircularProgressIndicator(),
+//                       ),
+//
+//                     // Close button
+//                     Positioned(
+//                       top: 8,
+//                       right: 8,
+//                       child: Material(
+//                         color: Colors.white,
+//                         shape: const CircleBorder(),
+//                         elevation: 3,
+//                         child: InkWell(
+//                           customBorder: const CircleBorder(),
+//                           onTap: () => Navigator.pop(context),
+//                           child: const Padding(
+//                             padding: EdgeInsets.all(8),
+//                             child: Icon(
+//                               Icons.close,
+//                               size: 20,
+//                               color: Colors.black54,
+//                             ),
+//                           ),
+//                         ),
+//                       ),
+//                     ),
+//                   ],
+//                 ),
+//               ),
+//             );
+//           },
+//         );
+//       },
+//     );
+//   }
+//
+//
+//
+//
+//
+//
+//
+//
+//
+// }
+
+
+
 
 class UserProfilePage extends StatefulWidget {
   const UserProfilePage({super.key});
@@ -572,16 +955,18 @@ class UserProfilePage extends StatefulWidget {
 }
 
 class _UserProfilePageState extends State<UserProfilePage> {
-  late Future<List<Template>> templatesFuture;
-  Map<String,dynamic> userDetails = {};
+  bool _isReady = false;
+  late WebViewController controller;
   String appLanguage = "en";
   late LocaleProvider localeProvider;
   late VoidCallback listener;
+  Map<String,dynamic> userDetails = {};
+  List<Template> results = [];
 
   @override
   void initState() {
     super.initState();
-    templatesFuture = getTemplates();
+
 
     listener = () {
       if (mounted) {
@@ -595,11 +980,13 @@ class _UserProfilePageState extends State<UserProfilePage> {
       localeProvider = Provider.of<LocaleProvider>(context, listen: false);
       localeProvider.addListener(listener);
     });
+
+    getTemplates();
+
   }
 
 
-  Future<List<Template>> getTemplates() async {
-    List<Template> results = [];
+  Future<void> getTemplates() async {
     userDetails = await getUserByUUID();
     var allTemplates = await getAllTemplates(1);
     if(allTemplates.isNotEmpty){
@@ -626,187 +1013,192 @@ class _UserProfilePageState extends State<UserProfilePage> {
         results = allTemplates;
       }
     }
+    if(results.isNotEmpty) {
+      var htmlContent = renderHtmlContent(html: results[0].htmlContent ?? "",
+          data: userDetails,
+          selectedLang: appLanguage);
 
 
-
-    return results;
+      controller = WebViewController()
+        ..setJavaScriptMode(JavaScriptMode.unrestricted)
+        ..setNavigationDelegate(
+          NavigationDelegate(
+            onPageFinished: (url) {
+              setState(() {
+                _isReady = true;
+              });
+            },
+          ),
+        )
+        ..loadHtmlString(htmlContent);
+    }
   }
 
-  void refreshTemplates() {
-    setState(() {
-      templatesFuture = getTemplates(); // Call the future again
-    });
-  }
+
 
 
   @override
   Widget build(BuildContext context) {
-    int selectedTemplateCount = 0;
-    return FutureBuilder(
-        future: templatesFuture,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          } else if (snapshot.hasError) {
-            return Center(child: Text('❌ Error: ${snapshot.error}'));
-          } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return Center(child: Text(getText("no_templates_available")));
-          }
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            // --- CARD CONTAINER ---
+            // Row(
+            //   mainAxisAlignment: MainAxisAlignment.end,
+            //   children: [
+            //     ElevatedButton(
+            //       onPressed: () {
+            //         Navigator.pushNamed(context, '/payment');
+            //       },
+            //       style: ElevatedButton.styleFrom(
+            //         backgroundColor: Colors.green[600],
+            //         shape: const StadiumBorder(),
+            //         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            //         minimumSize: const Size(0, 0), // allows small buttons
+            //       ),
+            //       child: const Text(
+            //         "Upgrade",
+            //         style: TextStyle(fontSize: 13),
+            //       ),
+            //     ),
+            //
+            //     const SizedBox(width: 8),
+            //
+            //     ElevatedButton(
+            //       onPressed: () {
+            //         Navigator.pushNamed(context, '/all_template');
+            //       },
+            //       style: ElevatedButton.styleFrom(
+            //         backgroundColor: Colors.black,
+            //         shape: const StadiumBorder(),
+            //         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            //         minimumSize: const Size(0, 0),
+            //       ),
+            //       child: const Text(
+            //         "Create +",
+            //         style: TextStyle(
+            //           color: Colors.white,
+            //           fontSize: 13,
+            //         ),
+            //       ),
+            //     ),
+            //
+            //     const SizedBox(width: 10),
+            //
+            //   ],
+            // ),
+            !_isReady ? const Center(child: CircularProgressIndicator())
+                : SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                  Container(
+                    height: MediaQuery.of(context).size.height * 0.6,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1E2A38),
+                      borderRadius: BorderRadius.circular(22),
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(22),
+                      child: WebViewWidget(controller: controller),
+                    ),
+                  ),
+                  const SizedBox(height: 5),
 
-          final allTemplates = snapshot.data ?? [];
-          int selectedTemplateCount = allTemplates.where((t) => t.isAlreadySelected ?? false).length;
-
-
-
-          return ListView.builder(
-            itemCount: allTemplates.length,
-            itemBuilder: (context, index) {
-              // Create Template instance from JSON
-              Template template = allTemplates[index];
-
-              return SlidableAutoCloseBehavior(
-                key: Key(template.id ?? ''),
-                closeWhenTapped: true,
-                child: GestureDetector(
-                    onTap: (){
-                      _showFullImage(context,template.previewImage ?? "");
-                    },
-                    child: Card(
-                      margin: const EdgeInsets.all(12),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                      elevation: 6,
-                      child: Container(
-                        height: MediaQuery.of(context).size.height * 0.5, // NEW HEIGHT
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(16),
-                          image: DecorationImage(
-                            image: NetworkImage(template.previewImage ?? ""),
-                            fit: BoxFit.cover,
-                          ),
-                        ),
-                        child: Container(
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(16),
-                            gradient: LinearGradient(
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                              colors: [
-                                Colors.black.withOpacity(0.1),
-                                Colors.black.withOpacity(0.4),
-                                Colors.black.withOpacity(0.7),
-                              ],
+                  // --- ICON ROW (Removed View Icon) ---
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      GestureDetector(
+                        onTap: (){
+                          Navigator.pushNamed(context, '/profile');
+                        },
+                        child: Column(
+                          children: [
+                            CircleAvatar(
+                              radius: 28,
+                              backgroundColor: Colors.grey.shade200,
+                              child: const Icon(Icons.edit, size: 28, color: Colors.black),
                             ),
-                          ),
-                          padding: const EdgeInsets.all(16),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // ---------- TOP TITLE ----------
-                              Text(
-                                template.name ?? "Template Name",
-                                style: const TextStyle(
-                                  fontSize: 22,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              const SizedBox(height: 8),
-
-                              // ---------- DESCRIPTION ----------
-                              Text(
-                                template.description ?? "Template Description",
-                                style: const TextStyle(
-                                  fontSize: 14,
-                                  color: Colors.white70,
-                                  height: 1.4,
-                                ),
-                                maxLines: 4,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-
-                              const Spacer(),
-
-                              // ---------- BOTTOM ACTION BUTTONS ----------
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.end,
-                                children: [
-                                  // Preview icon
-                                  Visibility(
-                                    visible: template.isAlreadySelected ?? false,
-                                    child: GestureDetector(
-                                      onTap: () {
-                                        showHtmlDialog(
-                                          context: context,
-                                          htmlTemplate: template.htmlContent ?? "",
-                                          data: userDetails ?? {},
-                                        );
-                                      },
-                                      child: CircleAvatar(
-                                        radius: 20,
-                                        backgroundColor: Colors.black.withOpacity(0.6),
-                                        child: const Icon(Icons.visibility, color: Colors.white),
-                                      ),
-                                    ),
-                                  ),
-
-                                  SizedBox(width: 12),
-
-                                  // Add / Selected icon
-                                  GestureDetector(
-                                    onTap: null,
-                                    child: CircleAvatar(
-                                      radius: 20,
-                                      backgroundColor: (template.isAlreadySelected ?? false)
-                                          ? Colors.green
-                                          : Colors.blueAccent,
-                                      child: Icon(
-                                        (template.isAlreadySelected ?? false)
-                                            ? Icons.check_circle
-                                            : Icons.add_circle_outline,
-                                        color: Colors.white,
-                                      ),
-                                    ),
-                                  ),
-
-                                  SizedBox(width: 12),
-
-                                  // Share icon
-                                  Visibility(
-                                    visible: template.isAlreadySelected ?? false,
-                                    child: GestureDetector(
-                                      onTap: () {
-                                        _showConfirmationDialog(context, template.id ?? "");
-                                      },
-                                      child: CircleAvatar(
-                                        radius: 20,
-                                        backgroundColor: Colors.orange,
-                                        child: const Icon(Icons.share_rounded,
-                                            color: Colors.white),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
+                            const SizedBox(height: 5),
+                            const Text("Edit",style: TextStyle(color: Colors.black),)
+                          ],
                         ),
                       ),
-                    )
+
+                      const SizedBox(width: 40),
+
+                      GestureDetector(
+                        onTap: (){
+                          Navigator.pushNamed(context, '/payment');
+                        },
+                        child: Column(
+                          children: [
+                            CircleAvatar(
+                              radius: 28,
+                              backgroundColor: Colors.grey.shade200,
+                              child: const Icon(Icons.account_balance_wallet,
+                                  size: 28, color: Colors.black),
+                            ),
+                            const SizedBox(height: 5),
+                            const Text("Wallet",style: TextStyle(color: Colors.black),)
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 10),
+
+                  // --- SHARE BUTTON (smaller) ---
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        if(results.isNotEmpty){
+                          _showConfirmationDialog(context,results[0].id ?? "");
+                        }
+                        else{
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text("❌ ${getText("template_link_generation_failed")}")),
+                          );
+                        }
+
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green.shade600,
+                        padding: const EdgeInsets.symmetric(vertical: 10), // smaller
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        minimumSize: const Size(0, 30), // smaller height
+                      ),
+                      child: const Text(
+                        "Share Card",
+                        style: TextStyle(
+                          fontSize: 14,  // smaller text
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+
+                                ],
+                              ),
                 ),
-              );
-            },
-          );
-        }
+
+
+          ],
+        ),
+      ),
     );
   }
-
-
   String getText(String title){
     return localeProvider.getText(key: title);
   }
-
 
   void _showConfirmationDialog(BuildContext context,String templateId) {
     showDialog(
@@ -873,132 +1265,11 @@ class _UserProfilePageState extends State<UserProfilePage> {
       ),
     );
   }
+}
 
-  // Function to show the full-size image
-  void _showFullImage(BuildContext context, String imageUrl) {
-    showDialog(
-      context: context,
-      builder: (context) =>
-          Dialog(
-            child: GestureDetector(
-              onTap: () {
-                Navigator.of(context).pop(); // Close the dialog when tapped
-              },
-              child: InteractiveViewer(
-                child: Image.network(imageUrl),
-              ),
-            ),
-          ),
-    );
-  }
 
-  void showHtmlDialog({
-    required BuildContext context,
-    required String htmlTemplate,
-    required Map<String, dynamic> data,
-  }) {
-    final renderedHtml = renderHtmlContent(
-      html: htmlTemplate,
-      data: data,
-      selectedLang: appLanguage,
-    );
 
-    log("CheckHtml:${renderedHtml}");
-
-    bool isLoading = true;
-    final controller = WebViewController()
-      ..setBackgroundColor(const Color(0x00000000))
-      ..setNavigationDelegate(
-        NavigationDelegate(
-          onPageFinished: (url) {
-            // When HTML is done rendering
-            isLoading = false;
-          },
-        ),
-      )
-      ..loadHtmlString(renderedHtml);
-
-    showDialog(
-      context: context,
-      barrierDismissible: true,
-      builder: (BuildContext context) {
-        final height = MediaQuery.of(context).size.height * 0.9;
-
-        return StatefulBuilder(
-          builder: (context, setState) {
-            // Update when loading finishes
-            controller.setNavigationDelegate(
-              NavigationDelegate(
-                onPageFinished: (url) {
-                  setState(() => isLoading = false);
-                },
-              ),
-            );
-
-            return Dialog(
-              backgroundColor: Colors.transparent,
-              insetPadding: const EdgeInsets.all(16),
-              child: Container(
-                padding: EdgeInsets.zero,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Stack(
-                  children: [
-                    // WebView
-                    SizedBox(
-                      width: double.maxFinite,
-                      height: height,
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(12),
-                        child: WebViewWidget(controller: controller),
-                      ),
-                    ),
-
-                    // Loading overlay
-                    if (isLoading)
-                      Container(
-                        width: double.infinity,
-                        height: height,
-                        alignment: Alignment.center,
-                        color: Colors.white.withOpacity(0.7),
-                        child: const CircularProgressIndicator(),
-                      ),
-
-                    // Close button
-                    Positioned(
-                      top: 8,
-                      right: 8,
-                      child: Material(
-                        color: Colors.white,
-                        shape: const CircleBorder(),
-                        elevation: 3,
-                        child: InkWell(
-                          customBorder: const CircleBorder(),
-                          onTap: () => Navigator.pop(context),
-                          child: const Padding(
-                            padding: EdgeInsets.all(8),
-                            child: Icon(
-                              Icons.close,
-                              size: 20,
-                              color: Colors.black54,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
-
-  String renderHtmlContent({
+String renderHtmlContent({
     required String html,
     required Map<String, dynamic> data,
     required String selectedLang,
@@ -1026,16 +1297,6 @@ class _UserProfilePageState extends State<UserProfilePage> {
       }
     });
   }
-
-
-
-
-
-
-
-}
-
-
 
 
 
