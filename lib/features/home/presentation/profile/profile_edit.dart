@@ -11,6 +11,7 @@ import 'package:googleapis_auth/auth_io.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:profio/features/services/api_constants.dart';
 import 'package:profio/features/services/api_service.dart';
+import 'package:profio/features/services/service_helper.dart';
 
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/helpers/global_helper.dart';
@@ -215,7 +216,7 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
                   child: OutlinedButton(
                     onPressed: () {
                       if (_currentStep == 0) {
-                        if (isProfileCompleted) {
+                        if (ServiceHelper.isProfileCompleted) {
                           Navigator.of(context).pop();
                         } else {
                           showDialog(
@@ -417,7 +418,7 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
           _textField(getText("personal_website"), uWebSiteController, type: TextInputType.twitter, isLastField: true),
 
           // ✅ Conditional Logout Button
-          if (!isProfileCompleted) ...[
+          if (!ServiceHelper.isProfileCompleted) ...[
             SizedBox(height: 30),
             Center(
               child: ElevatedButton.icon(
@@ -1112,7 +1113,7 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
     }
   }
 
-  void updateResult(int type){
+  void updateResult(int type) async{
     String message = "";
     bool isSuccess = false;
 
@@ -1135,11 +1136,17 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
     }
 
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)),);
-    if(!isProfileCompleted){
-      Navigator.of(context).pop();
+    if(!ServiceHelper.isProfileCompleted){
       if(isSuccess){
-        isProfileCompleted = true;
+        await storeProfileCompleteStatus(true);
+        Navigator.of(context).pop();
+        ServiceHelper.init();
+
         Navigator.pushReplacementNamed(context, '/home');
+      }else{
+        await storeProfileCompleteStatus(false);
+        ServiceHelper.init();
+        Navigator.of(context).pop();
       }
 
     }else{
@@ -1475,7 +1482,7 @@ void logOut(BuildContext context) async{
   final AuthService _authService = AuthService();
   final user = await _authService.signOut();
   appUserId = "";
-  isProfileCompleted = false;
+  await clearSharedPreference();
   userSubscribedPlan = Subscription(id: "NONE");
   Navigator.of(context).pop();
   Navigator.pushNamedAndRemoveUntil(context, '/login', (Route<dynamic> route) => false);

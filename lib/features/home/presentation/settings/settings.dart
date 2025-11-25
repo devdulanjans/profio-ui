@@ -5,6 +5,7 @@ import '../../../../core/helpers/global_helper.dart';
 import '../../../../core/models/subscription.dart';
 import '../../../../providers/locale_provider.dart';
 import '../../../services/AuthService.dart';
+import '../../../services/service_helper.dart';
 import '../home/home_page.dart';
 
 class SettingsList extends StatelessWidget {
@@ -194,7 +195,7 @@ class SettingsList extends StatelessWidget {
                       GlobalHelper().progressDialog(context,"Signing out","Signing out, please wait...");
                       final user = await _authService.signOut();
                       appUserId = "";
-                      isProfileCompleted = false;
+                      await clearSharedPreference();
                       userSubscribedPlan = Subscription(id: "NONE");
                       Navigator.of(context).pop();
                       Navigator.pushNamedAndRemoveUntil(context, '/login', (Route<dynamic> route) => false);

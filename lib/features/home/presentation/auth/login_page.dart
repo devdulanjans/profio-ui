@@ -8,6 +8,7 @@ import '../../../../providers/locale_provider.dart';
 import '../../../../providers/theme_provider.dart';
 import '../../../services/AuthService.dart';
 import '../../../services/api_service.dart';
+import '../../../services/service_helper.dart';
 
 class LoginPage extends StatelessWidget {
   const LoginPage({super.key});
@@ -139,7 +140,7 @@ class LoginPage extends StatelessWidget {
                           final user = await _authService.signInWithEmailPassword(_email.text, _password.text);
                           if (user != null) {
                             await getUserDetails();
-                            print("CheckUserObject:${user} - ${isProfileCompleted}");
+                            print("CheckUserObject:${user} - ${ServiceHelper.isProfileCompleted }");
                             Navigator.pop(context); // close loader
                             Navigator.pushReplacementNamed(context, '/home');
                           }else{
@@ -201,8 +202,11 @@ Future<void> getUserDetails() async{
   var userName = (user['name'] ?? {}).toString();
   var phoneNumber = user['phoneNumber'] ?? "";
   if(userName == "{}" || phoneNumber == ""){
-    isProfileCompleted = false;
+    await storeProfileCompleteStatus(false);
+
   }else{
-    isProfileCompleted = true;
+    await storeProfileCompleteStatus(true);
   }
+  await ServiceHelper.init();
+  print("CheckProfileStatus:${ServiceHelper.isProfileCompleted}");
 }
