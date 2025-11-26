@@ -10,6 +10,7 @@ const postGetPreSignedUrl = "/api/users/presign_url"; // to upload document & im
 const putUpdateUserDetails = "/api/users";//pass userId
 const getUserByUID = "/api/users/uid"; //pass firebase uuid
 const getAllTemplatesDetails = "/api/templates";
+const getAllTemplatesDetailsWithValues = "/api/templates/all";
 const getUserTemplates = "/api/user-templates";
 String postCreateTemplateForUser (String userId,String templateId) =>"/api/user-templates/$userId/$templateId";
 const putSubscribeLanguage = "/api/users/language/subscribe";

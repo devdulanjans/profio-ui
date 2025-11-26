@@ -243,7 +243,7 @@ Future<Map<String, dynamic>> getUserByUUID() async {
 
 Future<List<Template>> getAllTemplates(int type) async { //type == 1 - All | 2- User templates
   List<Template> templates = [];
-  String typeUrl = type == 1 ? "$baseUrl$getAllTemplatesDetails" :(type == 2 ? "$baseUrl$getUserTemplates/$appUserId" : "");
+  String typeUrl = type == 1 ? "$baseUrl$getAllTemplatesDetailsWithValues" :(type == 2 ? "$baseUrl$getUserTemplates/$appUserId" : "");
   final url = Uri.parse(typeUrl);
 
 

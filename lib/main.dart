@@ -3,14 +3,11 @@ import 'dart:developer';
 
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
-import 'package:profio/features/home/presentation/templates/all_templates.dart';
 import 'package:provider/provider.dart';
-import 'core/constants/app_strings.dart';
 import 'features/home/presentation/auth/login_page.dart';
 import 'features/home/presentation/auth/sign_up.dart';
 import 'features/home/presentation/home/home_page.dart';
 import 'features/services/AuthService.dart';
-import 'features/services/api_service.dart';
 import 'features/services/service_helper.dart';
 import 'providers/theme_provider.dart';
 import 'providers/locale_provider.dart';

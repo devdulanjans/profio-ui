@@ -1014,9 +1014,16 @@ class _UserProfilePageState extends State<UserProfilePage> {
       }
     }
     if(results.isNotEmpty) {
-      var htmlContent = renderHtmlContent(html: results[0].htmlContent ?? "",
-          data: userDetails,
-          selectedLang: appLanguage);
+      bool isShouldRender = false;
+      String htmlContent = "";
+      if(isShouldRender){
+         htmlContent = renderHtmlContent(html: results[0].htmlContent ?? "",
+            data: userDetails,
+            selectedLang: appLanguage);
+      }else{
+        htmlContent = results[0].htmlContent ?? "";
+      }
+
 
 
       controller = WebViewController()
