@@ -667,6 +667,14 @@ class LocaleProvider with ChangeNotifier {
         AppLanguage.english: "Template link generation failed",
         AppLanguage.japanese: "テンプレートのリンク生成に失敗しました。",
       },
+      'upgrade_package': {
+        AppLanguage.english: "Upgrade Package",
+        AppLanguage.japanese: "アップグレードパッケージ",
+      },
+      'upgrade_package_confirmation': {
+        AppLanguage.english: "Do you want to upgrade package ?",
+        AppLanguage.japanese: "パッケージをアップグレードしますか?",
+      },
 
 
 

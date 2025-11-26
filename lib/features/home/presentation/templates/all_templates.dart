@@ -19,6 +19,10 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:provider/provider.dart';
 import '../../../../providers/locale_provider.dart';
 import 'package:webview_flutter/webview_flutter.dart';
+import 'package:carousel_slider/carousel_slider.dart';
+
+import '../home/home_page.dart';
+
 
 class AllTemplatesPage extends StatefulWidget {
   const AllTemplatesPage({super.key});
@@ -110,6 +114,13 @@ class _AllTemplatesPageState extends State<AllTemplatesPage> {
   @override
   Widget build(BuildContext context) {
     int selectedTemplateCount = 0;
+    int selectedCardIndex = 0;
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
+    PageController _pageController = PageController(viewportFraction: 0.7);
+    final ScrollController _scrollController = ScrollController();
+    double _scrollOffset = 0;
+    int _currentPage = 0;
     return FutureBuilder(
       future: templatesFuture,
       builder: (context, snapshot) {
@@ -124,281 +135,243 @@ class _AllTemplatesPageState extends State<AllTemplatesPage> {
         final allTemplates = snapshot.data ?? [];
         int selectedTemplateCount =
             allTemplates.where((t) => t.isAlreadySelected ?? false).length;
+        // Fixed sizes for cards
+        final screenHeight = MediaQuery.of(context).size.height;
+        final screenWidth = MediaQuery.of(context).size.width;
+        final cardWidth = screenWidth * 0.8;
+        final cardHeight = screenHeight * 0.55;
 
-        return ListView.builder(
-          itemCount: allTemplates.length,
-          itemBuilder: (context, index) {
-            // Create Template instance from JSON
-            Template template = allTemplates[index];
-            final controller = webControllers[index];
 
-            return SlidableAutoCloseBehavior(
-              key: Key(template.id ?? ''),
-              closeWhenTapped: true,
-              child: Slidable(
-                enabled: (template.isAlreadySelected ?? false),
-                dragStartBehavior: DragStartBehavior.start,
-                closeOnScroll: true,
-                useTextDirection: true,
+        return Column(
+          children: [
+            CarouselSlider.builder(
+              itemCount: allTemplates.length,
+              options: CarouselOptions(
+                height: screenHeight * 0.75, // extra for title
+                enlargeCenterPage: true,
+                viewportFraction: 0.8,
+                enableInfiniteScroll: true,
+                onPageChanged: (index, reason) {
+                  setState(() {
+                    _currentPage = index;
+                  });
+                },
+              ),
+              itemBuilder: (context, index, realIndex) {
+                final template = allTemplates[index];
+                final controller = webControllers[index];
 
-                endActionPane: ActionPane(
-                  motion: const DrawerMotion(),
-                  children: [
-                    if (template.isAlreadySelected ?? false)
-                      SlidableAction(
-                        onPressed: (c) async {
-                          _showConfirmationDialogDeselectTemplate(
-                            context,
-                            template.id ?? "",
-                            userDetails["_id"] ?? "",
-                          );
-                        },
-                        backgroundColor: Colors.blue,
-                        foregroundColor: Colors.white,
-                        icon: Icons.deselect,
-                        label: getText("deselect"),
-                      ),
-                  ],
-                ),
-
-                // ---------------------------------------
-                // CARD + WEBVIEW + OVERLAY CONTENT
-                // ---------------------------------------
-                child: GestureDetector(
-                  onTap: () {
-                    _showFullImage(context, template.previewImage ?? "");
+                return GestureDetector(
+                  onTap: (){
+                    _showFullImage(context,template.previewImage ?? "");
                   },
-                  child: Card(
-                    margin: const EdgeInsets.all(12),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                    elevation: 6,
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(16),
-                      child: Stack(
-                        children: [
-                          // ---------------------------
-                          // WEBVIEW (NO GESTURE BLOCK)
-                          // ---------------------------
-                          IgnorePointer(
-                            ignoring: true, // disables ALL interaction
-                            child: SizedBox(
-                              height: 400,
-                              width: double.infinity,
-                              child: WebViewWidget(
-                                controller: webControllers[index],
-                              ),
-                            ),
-                          ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 10),
 
-                          // ---------------------------
-                          // GRADIENT OVERLAY
-                          // ---------------------------
-                          Positioned.fill(
-                            child: Container(
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  begin: Alignment.topCenter,
-                                  end: Alignment.bottomCenter,
-                                  colors: [
-                                    Colors.black.withValues(alpha: 0.10),
-                                    Colors.black.withValues(alpha: 0.40),
-                                    Colors.black.withValues(alpha: 0.70),
+                      // ---------------------------
+                      // TITLE
+                      // ---------------------------
+                      Text(
+                        template.name ?? "Template Name",
+                        style: const TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+
+                      const SizedBox(height: 12),
+
+                      // ---------------------------
+                      // CARD WITH STACK
+                      // ---------------------------
+                      SizedBox(
+                        height: cardHeight,
+                        child: Stack(
+                          children: [
+                            // Card
+                            Card(
+                              elevation: (template.isAlreadySelected ?? false) ? 12 : 6,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(20),
+                                child: Stack(
+                                  children: [
+                                    // ---------------------------
+                                    // WEBVIEW
+                                    // ---------------------------
+                                    WebViewWidget(
+                                      controller: webControllers[index],
+                                      gestureRecognizers: <Factory<OneSequenceGestureRecognizer>>{
+                                        Factory<VerticalDragGestureRecognizer>(
+                                              () => VerticalDragGestureRecognizer(),
+                                        ),
+                                      },
+                                    ),
+
+                                    // ---------------------------
+                                    // GRADIENT
+                                    // ---------------------------
+                                    Positioned.fill(
+                                      child: Container(
+                                        decoration: BoxDecoration(
+                                          gradient: LinearGradient(
+                                            begin: Alignment.topCenter,
+                                            end: Alignment.bottomCenter,
+                                            colors: [
+                                              Colors.black.withOpacity(0.1),
+                                              Colors.black.withOpacity(0.45),
+                                              Colors.black.withOpacity(0.75),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+
+                                    // ---------------------------
+                                    // BUTTONS AT BOTTOM
+                                    // ---------------------------
+                                    Positioned(
+                                      bottom: 16,
+                                      left: 16,
+                                      right: 16,
+                                      child: Row(
+                                        mainAxisAlignment: MainAxisAlignment.end,
+                                        children: [
+                                          // Preview
+                                          GestureDetector(
+                                            onTap: () {
+                                              showHtmlDialog(
+                                                context: context,
+                                                htmlTemplate: template.htmlContent ?? "",
+                                                data: userDetails ?? {},
+                                              );
+                                            },
+                                            child: CircleAvatar(
+                                              radius: 20,
+                                              backgroundColor: Colors.black.withOpacity(0.6),
+                                              child: const Icon(Icons.visibility,
+                                                  color: Colors.white),
+                                            ),
+                                          ),
+                                          const SizedBox(width: 12),
+
+                                          // Add / Selected
+                                          GestureDetector(
+                                            onTap: !(template.isAlreadySelected ?? false)
+                                                ? () {
+                                              if ((userSubscribedPlan.cardTemplateLimit ??
+                                                  1) >
+                                                  selectedTemplateCount) {
+                                                selectTemplate(
+                                                    context, template.id ?? "");
+                                              } else {
+                                                ScaffoldMessenger.of(context).showSnackBar(
+                                                  SnackBar(
+                                                    content: Text(
+                                                        "${getText("template_limit_reached")} $warmingIcon"),
+                                                  ),
+                                                );
+                                              }
+                                            }:(){
+                                              _showConfirmationDialogDeselectTemplate( context, template.id ?? "", userDetails["_id"] ?? "", );
+                                            },
+                                            child: CircleAvatar(
+                                              radius: 20,
+                                              backgroundColor:
+                                              (template.isAlreadySelected ?? false)
+                                                  ? Colors.green
+                                                  : Colors.blueAccent,
+                                              child: Icon(
+                                                (template.isAlreadySelected ?? false)
+                                                    ? Icons.check_circle
+                                                    : Icons.add_circle_outline,
+                                                color: Colors.white,
+                                              ),
+                                            ),
+                                          ),
+                                          const SizedBox(width: 12),
+
+                                          // Share only when selected
+                                          if (template.isAlreadySelected ?? false)
+                                            GestureDetector(
+                                              onTap: () {
+                                                _showConfirmationDialog(
+                                                    context, template.id ?? "");
+                                              },
+                                              child: CircleAvatar(
+                                                radius: 20,
+                                                backgroundColor: Colors.orange,
+                                                child: const Icon(Icons.share_rounded,
+                                                    color: Colors.white),
+                                              ),
+                                            ),
+                                        ],
+                                      ),
+                                    ),
                                   ],
                                 ),
                               ),
                             ),
-                          ),
 
-                          // ---------------------------
-                          // FOREGROUND UI
-                          // ---------------------------
-                          Positioned.fill(
-                            child: Padding(
-                              padding: const EdgeInsets.all(16),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-
-                                  // -------- Title --------
-                                  DecoratedBox(
+                            // ---------------------------
+                            // UPGRADE RIBBON
+                            // ---------------------------
+                            Visibility(
+                              visible:!(template.isAlreadySelected ?? false),
+                              child: Positioned(
+                                top: -2,
+                                right: -2,
+                                child: GestureDetector(
+                                  onTap:(){
+                                    _showConfirmationDialogUpgradePackage(context);
+                                  },
+                                  child: Container(
+                                    padding:
+                                    const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                                     decoration: BoxDecoration(
-                                      color: Colors.white.withValues(alpha: 0.6),
-                                      borderRadius: BorderRadius.circular(4),
-                                    ),
-                                    child: Padding(
-                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                      child: Text(
-                                        template.name ?? "Template Name",
-                                        style: const TextStyle(
-                                          fontSize: 22,
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.black,
+                                      color: Colors.green,
+                                      borderRadius: BorderRadius.circular(6),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black.withOpacity(0.20),
+                                          blurRadius: 4,
+                                          offset: const Offset(2, 2),
                                         ),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
+                                      ],
+                                    ),
+                                    child: const Text(
+                                      "UPGRADE",
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w700,
                                       ),
                                     ),
                                   ),
-
-                                  const SizedBox(height: 8),
-
-                                  // -------- Description --------
-                                  DecoratedBox(
-                                    decoration: BoxDecoration(
-                                      color: Colors.white.withValues(alpha: 0.6),
-                                      borderRadius: BorderRadius.circular(4),
-                                    ),
-                                    child: Padding(
-                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                      child: Text(
-                                        template.description ?? "Template Description",
-                                        style: const TextStyle(
-                                          fontSize: 14,
-                                          color: Colors.black,
-                                        ),
-                                        maxLines: 3,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                  ),
-
-                                  const Spacer(),
-
-                                  // -------- Bottom Buttons --------
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.end,
-                                    children: [
-
-                                      // PREVIEW
-                                        GestureDetector(
-                                          onTap: () {
-                                            showHtmlDialog(
-                                              context: context,
-                                              htmlTemplate: template.htmlContent ?? "",
-                                              data: userDetails ?? {},
-                                            );
-                                          },
-                                          child: CircleAvatar(
-                                            radius: 20,
-                                            backgroundColor: Colors.black.withValues(alpha: 0.6),
-                                            child: const Icon(Icons.visibility, color: Colors.white),
-                                          ),
-                                        ),
-
-                                      const SizedBox(width: 12),
-
-                                      // ADD / SELECTED
-                                      GestureDetector(
-                                        onTap: !(template.isAlreadySelected ?? false)
-                                            ? () {
-                                          if ((userSubscribedPlan.cardTemplateLimit ?? 1) >
-                                              selectedTemplateCount) {
-                                            selectTemplate(context, template.id ?? "");
-                                          } else {
-                                            ScaffoldMessenger.of(context).showSnackBar(
-                                              SnackBar(
-                                                content: Text(
-                                                    "${getText("template_limit_reached")} $warmingIcon"),
-                                              ),
-                                            );
-                                          }
-                                        }
-                                            : null,
-                                        child: CircleAvatar(
-                                          radius: 20,
-                                          backgroundColor: (template.isAlreadySelected ?? false)
-                                              ? Colors.green
-                                              : Colors.blueAccent,
-                                          child: Icon(
-                                            (template.isAlreadySelected ?? false)
-                                                ? Icons.check_circle
-                                                : Icons.add_circle_outline,
-                                            color: Colors.white,
-                                          ),
-                                        ),
-                                      ),
-
-                                      const SizedBox(width: 12),
-
-                                      // SHARE
-                                      if (template.isAlreadySelected ?? false)
-                                        GestureDetector(
-                                          onTap: () {
-                                            _showConfirmationDialog(context, template.id ?? "");
-                                          },
-                                          child: CircleAvatar(
-                                            radius: 20,
-                                            backgroundColor: Colors.orange,
-                                            child:
-                                            const Icon(Icons.share_rounded, color: Colors.white),
-                                          ),
-                                        ),
-                                    ],
-                                  ),
-                                ],
+                                ),
                               ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
+                    ],
                   ),
-                ),
-              )
-            );
-            // return Card(
-            //   margin: const EdgeInsets.all(8),
-            //   child: ListTile(
-            //     contentPadding: const EdgeInsets.all(10),
-            //     leading: ClipRRect(
-            //       borderRadius: BorderRadius.circular(8),
-            //       child: Image.network(
-            //         template.previewImage ?? "",  // Image loading as before
-            //         width: 80,
-            //         height: 80,
-            //         fit: BoxFit.cover,
-            //       ),
-            //     ),
-            //     title: Text(
-            //       template.name ?? "",
-            //       style: const TextStyle(fontWeight: FontWeight.bold),
-            //     ),
-            //     subtitle: Text(
-            //       template.description ?? "",
-            //       maxLines: 2,
-            //       overflow: TextOverflow.ellipsis,
-            //     ),
-            //     trailing: Row(
-            //       mainAxisSize: MainAxisSize.min,
-            //       children: [
-            //         // Eye icon for preview
-            //         IconButton(
-            //           icon: const Icon(Icons.visibility, color: Colors.blue),
-            //           onPressed: () {
-            //             // Call your method to show full image preview
-            //             _showFullImage(context, template.previewImage ?? "");
-            //           },
-            //         ),
-            //         // Add/Checked icon based on selection
-            //         IconButton(
-            //           icon: (template.isAlreadySelected ?? false)
-            //               ? const Icon(Icons.check_circle, color: Colors.green)
-            //               : const Icon(Icons.add_circle_outline, color: Colors.grey),
-            //           onPressed: () {
-            //             if(!(template.isAlreadySelected ?? false)){
-            //               selectTemplate(context,template.id ?? "");
-            //             }
-            //           },
-            //         ),
-            //       ],
-            //     ),
-            //     onTap: () {
-            //       // Handle tap for any other actions
-            //     },
-            //   ),
-            // );
-          },
+                );
+
+              },
+            ),
+          ],
         );
+
+
+
+
       },
     );
   }
@@ -503,6 +476,41 @@ class _AllTemplatesPageState extends State<AllTemplatesPage> {
           ),
     );
   }
+
+  void _showConfirmationDialogUpgradePackage(
+      BuildContext context,
+      ) {
+    showDialog(
+      context: context,
+      builder:
+          (ctx) => AlertDialog(
+        title: Text(getText("upgrade_package")),
+        content: Text(
+          getText("upgrade_package_confirmation"),
+          style: TextStyle(color: Colors.black),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(ctx).pop(); // close dialog
+            },
+            child: Text(getText("no")),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.of(ctx).pop();
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => HomePage(parentPageId: 100)),
+              );
+            },
+            child: Text(getText("yes")),
+          ),
+        ],
+      ),
+    );
+  }
+
 
   // Function to show the full-size image
   void _showFullImage(BuildContext context, String imageUrl) {
