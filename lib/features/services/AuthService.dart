@@ -32,6 +32,39 @@ class AuthService {
     }
   }
 
+  Future<bool> resetPassword(String email) async{
+    try {
+      await _auth.sendPasswordResetEmail(email: email);
+      return true;
+    } on FirebaseAuthException catch (e) {
+      return false;
+    }
+  }
+
+  Future<bool> deleteUser() async {
+    try {
+      User? user = _auth.currentUser;
+
+      if (user != null) {
+        await user.delete();
+        print("User account deleted successfully.");
+        return true;
+      } else {
+        print("No user is currently signed in.");
+        return false;
+      }
+    } on FirebaseAuthException catch (e) {
+      return false;
+      if (e.code == 'requires-recent-login') {
+        print("Please reauthenticate and try again.");
+
+        // You need to reauthenticate the user before deleting
+      } else {
+        print("Failed to delete user: ${e.message}");
+      }
+    }
+  }
+
   // Log out function
   Future<void> signOut() async {
     await _auth.signOut();

@@ -80,4 +80,33 @@ class GlobalHelper{
     );
   }
 
+
+  void showConfirmationDialog(BuildContext context,String title,String subTitle,String btn1,String btn2, VoidCallback onDelete) {
+    showDialog(
+      context: context,
+      barrierDismissible: false, // Prevent dismissing by tapping outside
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text(title),
+          content: Text(subTitle,style: TextStyle(color: Colors.black),),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(); // Close the dialog
+              },
+              child:  Text(btn1),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                onDelete();
+              },
+              child: Text(btn2),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
 }

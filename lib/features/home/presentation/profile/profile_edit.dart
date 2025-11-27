@@ -179,105 +179,108 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
   @override
   Widget build(BuildContext context) {
     print("CheckCurrentAppLanguage:$appLanguage");
-    return GestureDetector(
-      onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
-      onPanDown: (_) => FocusManager.instance.primaryFocus?.unfocus(),
-      onPanStart: (_) => FocusManager.instance.primaryFocus?.unfocus(),
-      child: !isLoading ? Column(
-        children: [
-          // Progress bar
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12),
-            child: LinearProgressIndicator(
-              minHeight: 6,
-              value: (_currentStep + 1) / _totalSteps,
+    return PopScope(
+      canPop: ServiceHelper.isProfileCompleted,
+      child: GestureDetector(
+        onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
+        onPanDown: (_) => FocusManager.instance.primaryFocus?.unfocus(),
+        onPanStart: (_) => FocusManager.instance.primaryFocus?.unfocus(),
+        child: !isLoading ? Column(
+          children: [
+            // Progress bar
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12),
+              child: LinearProgressIndicator(
+                minHeight: 6,
+                value: (_currentStep + 1) / _totalSteps,
+              ),
             ),
-          ),
 
-          // Step content
-          Expanded(
-            child: IndexedStack(
-              index: _currentStep,
-              children: [
-                _buildPersonalDetails(),
-                _buildCompanyDetails(),
-                _buildSocialMediaDetails(),
-                _buildDocumentDetails(), // includes image picker
-              ],
+            // Step content
+            Expanded(
+              child: IndexedStack(
+                index: _currentStep,
+                children: [
+                  _buildPersonalDetails(),
+                  _buildCompanyDetails(),
+                  _buildSocialMediaDetails(),
+                  _buildDocumentDetails(), // includes image picker
+                ],
+              ),
             ),
-          ),
 
-          // Action buttons
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () {
-                      if (_currentStep == 0) {
-                        if (ServiceHelper.isProfileCompleted) {
-                          Navigator.of(context).pop();
+            // Action buttons
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () {
+                        if (_currentStep == 0) {
+                          if (ServiceHelper.isProfileCompleted) {
+                            Navigator.of(context).pop();
+                          } else {
+                            showDialog(
+                              context: context,
+                              barrierDismissible: false,
+                              builder: (context) {
+                                return AlertDialog(
+                                  title: Text("Exit App?"),
+                                  content: Text("Your profile is not completed. Do you want to exit the app?",style: TextStyle(color: Colors.black),),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () {
+                                        Navigator.of(context).pop(); // close dialog only
+                                      },
+                                      child: Text("Cancel"),
+                                    ),
+                                    TextButton(
+                                      onPressed: () {
+                                        Navigator.of(context).pop(); // close dialog
+                                        SystemNavigator.pop();       // exit app
+                                      },
+                                      child: Text("Exit"),
+                                    ),
+                                  ],
+                                );
+                              },
+                            );
+                          }
+
                         } else {
-                          showDialog(
-                            context: context,
-                            barrierDismissible: false,
-                            builder: (context) {
-                              return AlertDialog(
-                                title: Text("Exit App?"),
-                                content: Text("Your profile is not completed. Do you want to exit the app?",style: TextStyle(color: Colors.black),),
-                                actions: [
-                                  TextButton(
-                                    onPressed: () {
-                                      Navigator.of(context).pop(); // close dialog only
-                                    },
-                                    child: Text("Cancel"),
-                                  ),
-                                  TextButton(
-                                    onPressed: () {
-                                      Navigator.of(context).pop(); // close dialog
-                                      SystemNavigator.pop();       // exit app
-                                    },
-                                    child: Text("Exit"),
-                                  ),
-                                ],
-                              );
-                            },
-                          );
+                          setState(() {
+                            _currentStep -= 1; // go back one step in wizard
+                          });
                         }
-
-                      } else {
-                        setState(() {
-                          _currentStep -= 1; // go back one step in wizard
-                        });
-                      }
-                    },
-                    child: Text(localeProvider.getText(key: 'back'),),
+                      },
+                      child: Text(localeProvider.getText(key: 'back'),),
+                    ),
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: _currentStep == _totalSteps - 1
-                        ? updateProfile
-                        : () {
-                      if (_validateCurrentStep(_currentStep)) {
-                        setState(() => _currentStep += 1);
-                      }
-                    },
-                    child: Text(_currentStep == _totalSteps - 1 ? localeProvider.getText(key: 'save') : localeProvider.getText(key: 'next')),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: _currentStep == _totalSteps - 1
+                          ? updateProfile
+                          : () {
+                        if (_validateCurrentStep(_currentStep)) {
+                          setState(() => _currentStep += 1);
+                        }
+                      },
+                      child: Text(_currentStep == _totalSteps - 1 ? localeProvider.getText(key: 'save') : localeProvider.getText(key: 'next')),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        ],
-      )
-          :Center(
-              child: SizedBox(
-                  height: 30,
-                  width: 30,
-                  child: CircularProgressIndicator())),
+          ],
+        )
+            :Center(
+                child: SizedBox(
+                    height: 30,
+                    width: 30,
+                    child: CircularProgressIndicator())),
+      ),
     );
   }
 
@@ -1136,16 +1139,18 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
     }
 
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)),);
+    print("CheckProfileStatus:${ServiceHelper.isProfileCompleted} -- $isSuccess");
     if(!ServiceHelper.isProfileCompleted){
       if(isSuccess){
         await storeProfileCompleteStatus(true);
+        await ServiceHelper.init();
         Navigator.of(context).pop();
-        ServiceHelper.init();
+
 
         Navigator.pushReplacementNamed(context, '/home');
       }else{
         await storeProfileCompleteStatus(false);
-        ServiceHelper.init();
+        await ServiceHelper.init();
         Navigator.of(context).pop();
       }
 

@@ -1,3 +1,5 @@
+import 'dart:developer';
+
 import 'package:flutter/material.dart';
 import 'package:profio/core/constants/app_strings.dart';
 import 'package:provider/provider.dart';
@@ -5,6 +7,7 @@ import '../../../../core/helpers/global_helper.dart';
 import '../../../../core/models/subscription.dart';
 import '../../../../providers/locale_provider.dart';
 import '../../../services/AuthService.dart';
+import '../../../services/api_service.dart';
 import '../../../services/service_helper.dart';
 import '../home/home_page.dart';
 
@@ -157,10 +160,16 @@ class SettingsList extends StatelessWidget {
         'titleKey': localeProvider.getText(key: 'logout'),
         'subtopics': [
           {
+            'key': 'deactivate_account',
+            'title': localeProvider.getText(key: 'deactivate_account'),
+            'subTitle': localeProvider.getText(key: ''),
+          },
+          {
             'key': 'logout_account',
             'title': localeProvider.getText(key: 'logout_account'),
             'subTitle': localeProvider.getText(key: ''),
           },
+
         ],
       },
     ];
@@ -199,7 +208,45 @@ class SettingsList extends StatelessWidget {
                       userSubscribedPlan = Subscription(id: "NONE");
                       Navigator.of(context).pop();
                       Navigator.pushNamedAndRemoveUntil(context, '/login', (Route<dynamic> route) => false);
-                    }else{
+                    }
+                    else if((subtopic['key'] ?? "") == 'deactivate_account'){
+                      GlobalHelper().showConfirmationDialog(
+                          context,
+                          localeProvider.getText(key: 'deactivate_account'),
+                          localeProvider.getText(key: 'deactivate_account_confirm'),
+                          localeProvider.getText(key: 'cancel'),
+                          localeProvider.getText(key: 'yes'),
+                              () async {
+                               GlobalHelper().progressDialog(context,localeProvider.getText(key: 'deactivate_account'),localeProvider.getText(key: 'deactivate_account_progress'));
+                                Map<String,dynamic> userDetails = await getUserByUUID();
+                                if(userDetails != {}){
+                                  var result = await deactivateAccount(userDetails["_id"], userDetails["uid"]);
+                                  if(result){
+                                    final user = await _authService.deleteUser();
+                                    appUserId = "";
+                                    await clearSharedPreference();
+                                    userSubscribedPlan = Subscription(id: "NONE");
+                                    Navigator.of(context).pop();
+                                    Navigator.pushNamedAndRemoveUntil(context, '/login', (Route<dynamic> route) => false);
+                                  }else{
+                                    Navigator.of(context).pop();
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(content: Text("${localeProvider.getText(key: 'deactivate_account_failed')} $failedIcon")),
+                                    );
+                                  }
+                                }else{
+                                  Navigator.of(context).pop();
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text("${localeProvider.getText(key: 'deactivate_account_failed')} $failedIcon")),
+                                  );
+                                }
+                               
+                                
+
+                          });
+
+                    }
+                    else{
                       pageNavigatorEngine(subtopic['key']);
                     }
 

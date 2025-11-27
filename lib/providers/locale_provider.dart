@@ -675,6 +675,79 @@ class LocaleProvider with ChangeNotifier {
         AppLanguage.english: "Do you want to upgrade package ?",
         AppLanguage.japanese: "パッケージをアップグレードしますか?",
       },
+      'en': {
+        AppLanguage.english: "English",
+        AppLanguage.japanese: "英語",
+      },
+      'ja': {
+        AppLanguage.english: "Japanese",
+        AppLanguage.japanese: "日本語",
+      },
+      'kn': {
+        AppLanguage.english: "Other",
+        AppLanguage.japanese: "他の",
+      },
+      'edit': {
+        AppLanguage.english: "Edit",
+        AppLanguage.japanese: "編集",
+      },
+      'wallet': {
+        AppLanguage.english: "Wallet",
+        AppLanguage.japanese: "財布",
+      },
+      'share_card': {
+        AppLanguage.english: "Share Card",
+        AppLanguage.japanese: "シェアカード",
+      },
+      'unlock': {
+        AppLanguage.english: "UNLOCK",
+        AppLanguage.japanese: "ロックを解除する",
+      },
+      'password_reset_success': {
+        AppLanguage.english: "Password reset email sent! Check your inbox.",
+        AppLanguage.japanese: "パスワードリセットメールを送信しました。受信トレイを確認してください。",
+      },
+      'password_reset_failed': {
+        AppLanguage.english: "Password reset failed.",
+        AppLanguage.japanese: "パスワードのリセットに失敗しました。",
+      },
+      'forget_password': {
+        AppLanguage.english: "Forget Password",
+        AppLanguage.japanese: "パスワードを忘れた",
+      },
+      'send_reset_link': {
+        AppLanguage.english: "Send Reset Link",
+        AppLanguage.japanese: "リセットリンクを送信する",
+      },
+      'please_email': {
+        AppLanguage.english: "Please enter your email",
+        AppLanguage.japanese: "メールアドレスを入力してください",
+      },
+      'enter_receive_email': {
+        AppLanguage.english: "Enter your email address below to receive a password reset link.",
+        AppLanguage.japanese: "パスワードリセットリンクを受け取るには、以下のメールアドレスを入力してください。",
+      },
+      'reset_password': {
+        AppLanguage.english: "Reset Your Password",
+        AppLanguage.japanese: "パスワードをリセットする",
+      },
+      'deactivate_account': {
+        AppLanguage.english: "Deactivate account",
+        AppLanguage.japanese: "アカウントを無効化する",
+      },
+      'deactivate_account_confirm': {
+        AppLanguage.english: "Do you want to deactivate this account ?",
+        AppLanguage.japanese: "このアカウントを無効にしますか?",
+      },
+      'deactivate_account_progress': {
+        AppLanguage.english: "Deactivating account, please wait...",
+        AppLanguage.japanese: "アカウントを無効にしています。お待ちください...",
+      },
+      'deactivate_account_failed': {
+        AppLanguage.english: "Deactivating account failed.",
+        AppLanguage.japanese: "アカウントの無効化に失敗しました。",
+      },
+
 
 
 

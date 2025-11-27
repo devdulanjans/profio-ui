@@ -960,7 +960,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
   String appLanguage = "en";
   late LocaleProvider localeProvider;
   late VoidCallback listener;
-  Map<String,dynamic> userDetails = {};
+  Map<String, dynamic> userDetails = {};
   List<Template> results = [];
 
   @override
@@ -971,7 +971,13 @@ class _UserProfilePageState extends State<UserProfilePage> {
     listener = () {
       if (mounted) {
         appLanguage = localeProvider.currentLanguageCode ?? "";
-        print("LanguageChanged:${appLanguage} -- ${localeProvider.currentLanguage}");
+        print("LanguageChanged:${appLanguage} -- ${localeProvider
+            .currentLanguage}");
+
+        setState(() {
+          _isReady = false;
+        });
+        getTemplates();
       }
     };
 
@@ -982,14 +988,13 @@ class _UserProfilePageState extends State<UserProfilePage> {
     });
 
     getTemplates();
-
   }
 
 
   Future<void> getTemplates() async {
     userDetails = await getUserByUUID();
-    var allTemplates = await getAllTemplates(1);
-    if(allTemplates.isNotEmpty){
+    var allTemplates = await getAllTemplates(1,language: appLanguage);
+    if (allTemplates.isNotEmpty) {
       var userTemplates = await getAllTemplates(2);
       if (userTemplates.isNotEmpty) {
         results = allTemplates.where((allTemplate) {
@@ -1009,21 +1014,20 @@ class _UserProfilePageState extends State<UserProfilePage> {
           return false; // skip if no match
         }).toList();
       }
-      else{
+      else {
         results = allTemplates;
       }
     }
-    if(results.isNotEmpty) {
+    if (results.isNotEmpty) {
       bool isShouldRender = false;
       String htmlContent = "";
-      if(isShouldRender){
-         htmlContent = renderHtmlContent(html: results[0].htmlContent ?? "",
+      if (isShouldRender) {
+        htmlContent = renderHtmlContent(html: results[0].htmlContent ?? "",
             data: userDetails,
             selectedLang: appLanguage);
-      }else{
+      } else {
         htmlContent = results[0].htmlContent ?? "";
       }
-
 
 
       controller = WebViewController()
@@ -1040,8 +1044,6 @@ class _UserProfilePageState extends State<UserProfilePage> {
         ..loadHtmlString(htmlContent);
     }
   }
-
-
 
 
   @override
@@ -1099,11 +1101,14 @@ class _UserProfilePageState extends State<UserProfilePage> {
             // ),
             !_isReady ? const Center(child: CircularProgressIndicator())
                 : SingleChildScrollView(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                   Container(
-                    height: MediaQuery.of(context).size.height * 0.6,
+                    height: MediaQuery
+                        .of(context)
+                        .size
+                        .height * 0.6,
                     decoration: BoxDecoration(
                       color: const Color(0xFF1E2A38),
                       borderRadius: BorderRadius.circular(22),
@@ -1120,7 +1125,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       GestureDetector(
-                        onTap: (){
+                        onTap: () {
                           Navigator.pushNamed(context, '/profile');
                         },
                         child: Column(
@@ -1128,10 +1133,11 @@ class _UserProfilePageState extends State<UserProfilePage> {
                             CircleAvatar(
                               radius: 28,
                               backgroundColor: Colors.grey.shade200,
-                              child: const Icon(Icons.edit, size: 28, color: Colors.black),
+                              child: const Icon(
+                                  Icons.edit, size: 28, color: Colors.black),
                             ),
                             const SizedBox(height: 5),
-                            const Text("Edit",style: TextStyle(color: Colors.black),)
+                            Text(getText("edit"), style: TextStyle(color: Colors.black),)
                           ],
                         ),
                       ),
@@ -1139,7 +1145,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
                       const SizedBox(width: 40),
 
                       GestureDetector(
-                        onTap: (){
+                        onTap: () {
                           Navigator.pushNamed(context, '/payment');
                         },
                         child: Column(
@@ -1151,7 +1157,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
                                   size: 28, color: Colors.black),
                             ),
                             const SizedBox(height: 5),
-                            const Text("Wallet",style: TextStyle(color: Colors.black),)
+                            Text(getText("wallet"), style: TextStyle(color: Colors.black),)
                           ],
                         ),
                       ),
@@ -1165,37 +1171,43 @@ class _UserProfilePageState extends State<UserProfilePage> {
                     width: double.infinity,
                     child: ElevatedButton(
                       onPressed: () {
-                        if(results.isNotEmpty){
-                          _showConfirmationDialog(context,results[0].id ?? "");
+                        if (results.isNotEmpty) {
+                          final rawList = userDetails['languageSubscriptionList'];
+                          List<String> stringOptions = [];
+
+                          if (rawList != null && rawList is List) {
+                            stringOptions = rawList.whereType<String>().toList(); // keeps only Strings
+                          }
+                          _showConfirmationDialog(context, results[0].id ?? "", stringOptions);
                         }
-                        else{
+                        else {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text("❌ ${getText("template_link_generation_failed")}")),
+                            SnackBar(content: Text("❌ ${getText(
+                                "template_link_generation_failed")}")),
                           );
                         }
-
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.green.shade600,
-                        padding: const EdgeInsets.symmetric(vertical: 10), // smaller
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        // smaller
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(10),
                         ),
                         minimumSize: const Size(0, 30), // smaller height
                       ),
-                      child: const Text(
-                        "Share Card",
+                      child:  Text(getText('share_card'),
                         style: TextStyle(
-                          fontSize: 14,  // smaller text
+                          fontSize: 14, // smaller text
                           color: Colors.white,
                         ),
                       ),
                     ),
                   ),
 
-                                ],
-                              ),
-                ),
+                ],
+              ),
+            ),
 
 
           ],
@@ -1203,80 +1215,113 @@ class _UserProfilePageState extends State<UserProfilePage> {
       ),
     );
   }
-  String getText(String title){
+
+  String getText(String title) {
     return localeProvider.getText(key: title);
   }
 
-  void _showConfirmationDialog(BuildContext context,String templateId) {
+
+   void _showConfirmationDialog(BuildContext context, String templateId,
+      List<String> options) {
+    String? selectedOption;
+
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(getText("share_template")),
-        content: Text(getText("confirm_share_link"),style: TextStyle(color: Colors.black),),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.of(ctx).pop(); // close dialog
-            },
-            child: Text(getText("no")),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              // Save the parent context before dismissing the dialog
-              final scaffoldContext = context; // Use outer context, not ctx from dialog
-
-              Navigator.of(ctx).pop(); // close dialog
-
-              // Show a loading dialog or progress indicator
-              GlobalHelper().progressDialog(scaffoldContext,getText("template_share"), getText("link_generating_wait"));
-
-              // Generate the URL
-              String url = await shareUserTemplate(appUserId, templateId);
-
-
-
-              // Close the progress dialog
-              Navigator.of(scaffoldContext).pop();
-
-              if (url.isNotEmpty) {
-
-                // Download profile picture
-
-                final response = await getThumbnailUserImage(userDetails);
-
-                // Save to temporary directory
-                final tempDir = await getTemporaryDirectory();
-                final file = File('${tempDir.path}/profile_thumbnail.jpg');
-                await file.writeAsBytes(response.bodyBytes);
-
-
-                await SharePlus.instance.share(
-                  ShareParams(
-                    files: [XFile(file.path)],
-                    text: url,
-                    subject: getText("profio_user_template"), // subject can change what as user need
-
-                    //uri: Uri.parse(url)
+      builder: (ctx) =>
+          StatefulBuilder(
+              builder: (buildContext, setStateInside) {
+                return AlertDialog(
+                  title: Text(getText("share_template")),
+                  content: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        getText("confirm_share_link"),
+                        style: TextStyle(color: Colors.black),
+                      ),
+                      SizedBox(height: 20),
+                      // Use RadioGroup (Material 3)
+                      RadioGroup<String>(
+                        groupValue: selectedOption,
+                        onChanged: (val) {
+                          setStateInside(() {
+                            selectedOption = val;
+                          });
+                        },
+                        child: Column(
+                          children: options.map((option) {
+                            return ListTile(
+                              title: Text(getText(option)),
+                              leading: Radio<String>(value: option),
+                              onTap: () {
+                                setStateInside(() {
+                                  selectedOption = option;
+                                });
+                              },
+                            );
+                          }).toList(),
+                        ),
+                      )
+                    ],
                   ),
-                );
-              } else {
-                // Show the snackbar using scaffoldContext (not ctx)
-                ScaffoldMessenger.of(scaffoldContext).showSnackBar(
-                  SnackBar(content: Text("❌ ${getText("template_link_generation_failed")}")),
+                  actions: [
+                    TextButton(
+                      onPressed: () {
+                        Navigator.of(ctx).pop();
+                      },
+                      child: Text(getText("no")),
+                    ),
+                    ElevatedButton(
+                      onPressed: selectedOption == null
+                          ? null
+                          : () async {
+                        final scaffoldContext = context;
+                        Navigator.of(ctx).pop();
+
+                        GlobalHelper().progressDialog(
+                            scaffoldContext,
+                            getText("template_share"),
+                            getText("link_generating_wait"));
+
+                        String url = await shareUserTemplate(appUserId, templateId,selectedOption ?? "en");
+
+                        Navigator.of(scaffoldContext).pop();
+
+                        if (url.isNotEmpty) {
+                          final response = await getThumbnailUserImage(userDetails);
+
+                          final tempDir = await getTemporaryDirectory();
+                          final file =
+                          File('${tempDir.path}/profile_thumbnail.jpg');
+                          await file.writeAsBytes(response.bodyBytes);
+
+                          await SharePlus.instance.share(
+                            ShareParams(
+                              files: [XFile(file.path)],
+                              text: "$url\nSelected: $selectedOption",
+                              subject: getText("profio_user_template"),
+                            ),
+                          );
+                        } else {
+                          ScaffoldMessenger.of(scaffoldContext).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                  "❌ ${getText("template_link_generation_failed")}"),
+                            ),
+                          );
+                        }
+                      },
+                      child: Text(getText("yes")),
+                    ),
+                  ],
                 );
               }
-            },
-            child: Text(getText("yes")),
           ),
-        ],
-      ),
     );
   }
-}
 
 
-
-String renderHtmlContent({
+  String renderHtmlContent({
     required String html,
     required Map<String, dynamic> data,
     required String selectedLang,
@@ -1291,8 +1336,8 @@ String renderHtmlContent({
 
       final value = data[key];
       log("CheckValue:${value} -- ${key}");
-      if(key == "profileImageURL"){
-        return fetchImage(data['_id'] ?? "","PROFILE", value);
+      if (key == "profileImageURL") {
+        return fetchImage(data['_id'] ?? "", "PROFILE", value);
       }
       if (value is String) {
         return value;
@@ -1304,18 +1349,4 @@ String renderHtmlContent({
       }
     });
   }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+}

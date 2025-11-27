@@ -12,7 +12,20 @@
           "package_name": "app.profio.digitalvisitingcard.app.profio"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "980062462555-pfvo5417rdr7menockeao2vg5259vpj6.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "app.profio.digitalvisitingcard.app.profio",
+            "certificate_hash": "e5563bb9dea98ddae7d82a50df7f0d3b974b09db"
+          }
+        },
+        {
+          "client_id": "980062462555-fr5nlb8bc9dq77c21n22ji5alu5vhckb.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyCjd46NtSUgIqwLlMwqhXOrSx8DiHdXGWo"
@@ -20,7 +33,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "980062462555-fr5nlb8bc9dq77c21n22ji5alu5vhckb.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "980062462555-9l0d08vt3iacdj3nhhn2desgg93km2g1.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "app.profio.digitalvisitingcard.app.profio"
+              }
+            }
+          ]
         }
       }
     },
@@ -31,7 +56,12 @@
           "package_name": "com.profiodbcmapp"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "980062462555-fr5nlb8bc9dq77c21n22ji5alu5vhckb.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyCjd46NtSUgIqwLlMwqhXOrSx8DiHdXGWo"
@@ -39,7 +69,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "980062462555-fr5nlb8bc9dq77c21n22ji5alu5vhckb.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "980062462555-9l0d08vt3iacdj3nhhn2desgg93km2g1.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "app.profio.digitalvisitingcard.app.profio"
+              }
+            }
+          ]
         }
       }
     }

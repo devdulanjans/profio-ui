@@ -47,9 +47,8 @@ class _AllTemplatesPageState extends State<AllTemplatesPage> {
     listener = () {
       if (mounted) {
         appLanguage = localeProvider.currentLanguageCode ?? "";
-        print(
-          "LanguageChanged:${appLanguage} -- ${localeProvider.currentLanguage}",
-        );
+        print("LanguageChanged:AllTemplate--${appLanguage} -- ${localeProvider.currentLanguage}",);
+        refreshTemplates();
       }
     };
 
@@ -63,7 +62,7 @@ class _AllTemplatesPageState extends State<AllTemplatesPage> {
   Future<List<Template>> getTemplates() async {
     List<Template> results = [];
     userDetails = await getUserByUUID();
-    var allTemplates = await getAllTemplates(1);
+    var allTemplates = await getAllTemplates(1,language: appLanguage);
     if (allTemplates.isNotEmpty) {
       var userTemplates = await getAllTemplates(2);
       if (userTemplates.isNotEmpty) {
@@ -113,13 +112,6 @@ class _AllTemplatesPageState extends State<AllTemplatesPage> {
 
   @override
   Widget build(BuildContext context) {
-    int selectedTemplateCount = 0;
-    int selectedCardIndex = 0;
-    final screenWidth = MediaQuery.of(context).size.width;
-    final screenHeight = MediaQuery.of(context).size.height;
-    PageController _pageController = PageController(viewportFraction: 0.7);
-    final ScrollController _scrollController = ScrollController();
-    double _scrollOffset = 0;
     int _currentPage = 0;
     return FutureBuilder(
       future: templatesFuture,
@@ -163,7 +155,12 @@ class _AllTemplatesPageState extends State<AllTemplatesPage> {
 
                 return GestureDetector(
                   onTap: (){
-                    _showFullImage(context,template.previewImage ?? "");
+                    showHtmlDialog(
+                        context: context,
+                        htmlTemplate: template.htmlContent ?? "",
+                        data: userDetails ?? {},
+                        isShouldRender: false
+                    );
                   },
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.start,
@@ -224,9 +221,9 @@ class _AllTemplatesPageState extends State<AllTemplatesPage> {
                                             begin: Alignment.topCenter,
                                             end: Alignment.bottomCenter,
                                             colors: [
-                                              Colors.black.withOpacity(0.1),
-                                              Colors.black.withOpacity(0.45),
-                                              Colors.black.withOpacity(0.75),
+                                              Colors.black.withValues(alpha: 0.1),
+                                              Colors.black.withValues(alpha: 0.45),
+                                              Colors.black.withValues(alpha: 0.75),
                                             ],
                                           ),
                                         ),
@@ -250,6 +247,7 @@ class _AllTemplatesPageState extends State<AllTemplatesPage> {
                                                 context: context,
                                                 htmlTemplate: template.htmlContent ?? "",
                                                 data: userDetails ?? {},
+                                                isShouldRender: false
                                               );
                                             },
                                             child: CircleAvatar(
@@ -301,8 +299,13 @@ class _AllTemplatesPageState extends State<AllTemplatesPage> {
                                           if (template.isAlreadySelected ?? false)
                                             GestureDetector(
                                               onTap: () {
-                                                _showConfirmationDialog(
-                                                    context, template.id ?? "");
+                                                final rawList = userDetails['languageSubscriptionList'];
+                                                List<String> stringOptions = [];
+
+                                                if (rawList != null && rawList is List) {
+                                                  stringOptions = rawList.whereType<String>().toList(); // keeps only Strings
+                                                }
+                                                shareTemplate(context, template.id ?? "", stringOptions);
                                               },
                                               child: CircleAvatar(
                                                 radius: 20,
@@ -345,8 +348,8 @@ class _AllTemplatesPageState extends State<AllTemplatesPage> {
                                         ),
                                       ],
                                     ),
-                                    child: const Text(
-                                      "UPGRADE",
+                                    child: Text(
+                                      getText('unlock'),
                                       style: TextStyle(
                                         color: Colors.white,
                                         fontSize: 11,
@@ -642,81 +645,108 @@ class _AllTemplatesPageState extends State<AllTemplatesPage> {
     );
   }
 
-  void _showConfirmationDialog(BuildContext context, String templateId) {
+
+
+  void shareTemplate(BuildContext context, String templateId,
+      List<String> options) {
+    String? selectedOption;
+
     showDialog(
       context: context,
-      builder:
-          (ctx) => AlertDialog(
-            title: Text(getText("share_template")),
-            content: Text(
-              getText("confirm_share_link"),
-              style: TextStyle(color: Colors.black),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.of(ctx).pop(); // close dialog
-                },
-                child: Text(getText("no")),
-              ),
-              ElevatedButton(
-                onPressed: () async {
-                  // Save the parent context before dismissing the dialog
-                  final scaffoldContext =
-                      context; // Use outer context, not ctx from dialog
-
-                  Navigator.of(ctx).pop(); // close dialog
-
-                  // Show a loading dialog or progress indicator
-                  GlobalHelper().progressDialog(
-                    scaffoldContext,
-                    getText("template_share"),
-                    getText("link_generating_wait"),
-                  );
-
-                  // Generate the URL
-                  String url = await shareUserTemplate(appUserId, templateId);
-
-                  // Close the progress dialog
-                  Navigator.of(scaffoldContext).pop();
-
-                  if (url.isNotEmpty) {
-                    // Download profile picture
-
-                    final response = await getThumbnailUserImage(userDetails);
-
-                    // Save to temporary directory
-                    final tempDir = await getTemporaryDirectory();
-                    final file = File('${tempDir.path}/profile_thumbnail.jpg');
-                    await file.writeAsBytes(response.bodyBytes);
-
-                    await SharePlus.instance.share(
-                      ShareParams(
-                        files: [XFile(file.path)],
-                        text: url,
-                        subject: getText(
-                          "profio_user_template",
-                        ), // subject can change what as user need
-                        //uri: Uri.parse(url)
+      builder: (ctx) =>
+          StatefulBuilder(
+              builder: (buildContext, setStateInside) {
+                return AlertDialog(
+                  title: Text(getText("share_template")),
+                  content: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        getText("confirm_share_link"),
+                        style: TextStyle(color: Colors.black),
                       ),
-                    );
-                  } else {
-                    // Show the snackbar using scaffoldContext (not ctx)
-                    ScaffoldMessenger.of(scaffoldContext).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          "❌ ${getText("template_link_generation_failed")}",
+                      SizedBox(height: 20),
+                      // Use RadioGroup (Material 3)
+                      RadioGroup<String>(
+                        groupValue: selectedOption,
+                        onChanged: (val) {
+                          setStateInside(() {
+                            selectedOption = val;
+                          });
+                        },
+                        child: Column(
+                          children: options.map((option) {
+                            return ListTile(
+                              title: Text(getText(option)),
+                              leading: Radio<String>(value: option),
+                              onTap: () {
+                                setStateInside(() {
+                                  selectedOption = option;
+                                });
+                              },
+                            );
+                          }).toList(),
                         ),
-                      ),
-                    );
-                  }
-                },
-                child: Text(getText("yes")),
-              ),
-            ],
+                      )
+                    ],
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () {
+                        Navigator.of(ctx).pop();
+                      },
+                      child: Text(getText("no")),
+                    ),
+                    ElevatedButton(
+                      onPressed: selectedOption == null
+                          ? null
+                          : () async {
+                        final scaffoldContext = context;
+                        Navigator.of(ctx).pop();
+
+                        GlobalHelper().progressDialog(
+                            scaffoldContext,
+                            getText("template_share"),
+                            getText("link_generating_wait"));
+
+                        String url = await shareUserTemplate(appUserId, templateId,selectedOption ?? "en");
+
+                        Navigator.of(scaffoldContext).pop();
+
+                        if (url.isNotEmpty) {
+                          final response = await getThumbnailUserImage(userDetails);
+
+                          final tempDir = await getTemporaryDirectory();
+                          final file =
+                          File('${tempDir.path}/profile_thumbnail.jpg');
+                          await file.writeAsBytes(response.bodyBytes);
+
+                          await SharePlus.instance.share(
+                            ShareParams(
+                              files: [XFile(file.path)],
+                              text: "$url\nSelected: $selectedOption",
+                              subject: getText("profio_user_template"),
+                            ),
+                          );
+                        } else {
+                          ScaffoldMessenger.of(scaffoldContext).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                  "❌ ${getText("template_link_generation_failed")}"),
+                            ),
+                          );
+                        }
+                      },
+                      child: Text(getText("yes")),
+                    ),
+                  ],
+                );
+              }
           ),
     );
   }
+
+
 }
 
 String renderHtmlContent({
@@ -747,3 +777,4 @@ String renderHtmlContent({
     }
   });
 }
+

@@ -1,4 +1,8 @@
+import 'dart:developer';
+
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../core/constants/app_strings.dart';
@@ -8,6 +12,7 @@ import '../../../../providers/locale_provider.dart';
 import '../../../../providers/theme_provider.dart';
 import '../../../services/AuthService.dart';
 import '../../../services/api_service.dart';
+import '../../../services/google_auth_service.dart';
 import '../../../services/service_helper.dart';
 
 class LoginPage extends StatelessWidget {
@@ -17,6 +22,7 @@ class LoginPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final localeProvider = Provider.of<LocaleProvider>(context);
     final themeProvider = Provider.of<ThemeProvider>(context);
+    final GoogleAuthService _googleAuth = GoogleAuthService();
     final AuthService _authService = AuthService();
     TextEditingController _email = TextEditingController();
     TextEditingController _password = TextEditingController();
@@ -156,6 +162,18 @@ class LoginPage extends StatelessWidget {
                       child: Text(localeProvider.getText(key: 'login')),
                     ),
                   ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton(
+                        onPressed: () {
+                          print('clicked');
+                          Navigator.pushNamed(context, '/forget_password');
+                        },
+                        child: Text(localeProvider.getText(key: 'forget_password')),
+                      ),
+                    ],
+                  ),
                   const SizedBox(height: 16),
                   TextButton(
                     onPressed: () {},
@@ -166,11 +184,44 @@ class LoginPage extends StatelessWidget {
                     width: 200,
                     child: ElevatedButton(
                       style: ButtonStyle(
-                        backgroundColor: MaterialStateProperty.all<Color>(
+                        backgroundColor: WidgetStateProperty.all<Color>(
                             themeProvider.isDarkMode?Colors.white:Colors.black), // Set background color to black
 
                       ),
-                      onPressed: () {
+                      onPressed: () async{
+                        final UserCredential? user = await _googleAuth.signInWithGoogle();
+                        if (user != null) {
+                          GlobalHelper().progressDialog(context,"Google signing in","Signing you in, please wait...");
+                          Map<String,dynamic> apiUser = await getUserByUUIDFromDb(user.user?.uid ?? "") ?? {};
+
+                          //new user not registered yet
+                          if(apiUser.toString() == "{}"){
+                            var result = await userRegister(user.user?.email ?? "", user.user?.uid ?? "");
+                            if(result != ""){
+                              var subScribeLng = await subScribeLanguage(result,"ja"); // assume default setup en and manually adding ja this need to be change based on requirement
+                              await getUserDetails();
+                              Navigator.pop(context); // close loader
+                              Navigator.pushReplacementNamed(context, '/home');
+                            }else{
+                              Navigator.pop(context); // close loader
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text("❌ Google sign in register failed")),
+                              );
+                            }
+                          }else{
+                            // already registered
+                            await getUserDetails();
+                            Navigator.pop(context); // close loader
+                            Navigator.pushReplacementNamed(context, '/home');
+                          }
+
+
+                        }else{
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text("❌ Google sign in failed")),
+                          );
+                        }
+
 
                       },
                       child: Text(localeProvider.getText(key: 'googleauth'),style: themeProvider.isDarkMode ? AppText.bodyMedium.copyWith(color: Colors.green):AppText.bodyMedium.copyWith(color: Colors.white)),

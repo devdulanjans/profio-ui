@@ -241,9 +241,36 @@ Future<Map<String, dynamic>> getUserByUUID() async {
   return data;
 }
 
-Future<List<Template>> getAllTemplates(int type) async { //type == 1 - All | 2- User templates
+Future<Map<String, dynamic>> getUserByUUIDFromDb(String uid) async {
+  Map<String, dynamic> data = {};
+
+  final url = Uri.parse("$baseUrl$getUserByUID/$uid");
+
+
+  try {
+    final headers = await getAuthHeaders();
+    final response = await http.get(url, headers: headers,);
+
+    log("CheckResponseCode:${response.statusCode}");
+    if (response.statusCode == 200 ) {
+      final results = json.decode(response.body);
+      data = results;
+    }
+    else {
+      print("❌ Failed: ${response.statusCode} - ${response.body}");
+      return data;
+    }
+  } catch (e) {
+    print("❌ Error: $e");
+    return data;
+  }
+
+  return data;
+}
+
+Future<List<Template>> getAllTemplates(int type,{String language = "en"}) async { //type == 1 - All | 2- User templates
   List<Template> templates = [];
-  String typeUrl = type == 1 ? "$baseUrl$getAllTemplatesDetailsWithValues" :(type == 2 ? "$baseUrl$getUserTemplates/$appUserId" : "");
+  String typeUrl = type == 1 ? "$baseUrl$getAllTemplatesDetailsWithValues?language=$language" :(type == 2 ? "$baseUrl$getUserTemplates/$appUserId" : "");
   final url = Uri.parse(typeUrl);
 
 
@@ -305,6 +332,33 @@ Future<bool> createTemplateForUser(String userId,String templateId) async {
 }
 
 
+Future<bool> deactivateAccount(String userId,String uuid) async {
+  final url = Uri.parse("$baseUrl$postDeactivateAccount");
+
+
+  try {
+    final headers = await getAuthHeaders();
+    String request = jsonEncode({
+      "userId": userId,
+      "uid": uuid
+    });
+    final response = await http.post(url, headers: headers, body:request);
+
+    log("checkApiURl:$url\n CheckUserRequest-$userId \n ResponseCode:- ${response.statusCode}");
+    if (response.statusCode == 200 ) {
+      final results = json.decode(response.body);
+      return true;
+    }
+    else {
+      print("❌ Failed: ${response.statusCode} - ${response.body}");
+      return false;
+    }
+  } catch (e) {
+    print("❌ Error: $e");
+    return false;
+  }
+}
+
 
 Future<bool> subScribeLanguage(String userId,String language) async {
   final url = Uri.parse("$baseUrl$putSubscribeLanguage");
@@ -341,7 +395,7 @@ Future<bool> subScribeLanguage(String userId,String language) async {
 }
 
 
-Future<String> shareUserTemplate(String userId,String templateId) async {
+Future<String> shareUserTemplate(String userId,String templateId,String language) async {
   final url = Uri.parse("$baseUrl$postShareTemplate");
 
 
@@ -349,6 +403,7 @@ Future<String> shareUserTemplate(String userId,String templateId) async {
       {
         "userId":userId,
         "templateId":templateId,
+        "language":language
 
       });
 

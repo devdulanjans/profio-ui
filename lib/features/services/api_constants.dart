@@ -18,4 +18,5 @@ const postShareTemplate = "/api/user-templates/share";
 String deleteDocument (String userId,String documentId) =>"/api/users/document/$userId/DOCUMENT/$documentId";
 const patchUpdateDocumentTitle = "/api/users/document/title";
 String deselectTemplate (String userID,String templateId) =>"/api/user-templates/$userID/$templateId";
+const postDeactivateAccount = "/api/access/deactivate";
 

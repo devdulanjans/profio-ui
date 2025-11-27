@@ -3,6 +3,7 @@ import 'dart:developer';
 
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:profio/features/home/presentation/auth/forget_password.dart';
 import 'package:provider/provider.dart';
 import 'features/home/presentation/auth/login_page.dart';
 import 'features/home/presentation/auth/sign_up.dart';
@@ -53,6 +54,9 @@ class MyApp extends StatelessWidget {
             return MaterialPageRoute(builder: (_) =>  const HomePage(parentPageId: 101));
           case '/payment':
             return MaterialPageRoute(builder: (_) =>  const HomePage(parentPageId: 100));
+          case '/forget_password':
+            return MaterialPageRoute(builder: (_) =>  const ResetPasswordPage());
+
           case '/home':
           // Evaluate condition at runtime
             log("CheckRoute:${isLoggedIn} -- ${ServiceHelper.isProfileCompleted }");
