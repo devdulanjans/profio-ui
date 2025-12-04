@@ -56,6 +56,16 @@
     <!-- Optional: Permission to Save Images to Gallery -->
     <key>NSPhotoLibraryAddUsageDescription</key>
     <string>This app needs permission to save photos to your library.</string>
-
+    <key>CFBundleURLTypes</key>
+    <array>
+      <dict>
+        <key>CFBundleTypeRole</key>
+        <string>Editor</string>
+        <key>CFBundleURLSchemes</key>
+        <array>
+            <string>com.googleusercontent.apps.980062462555-9l0d08vt3iacdj3nhhn2desgg93km2g1</string>
+        </array>
+      </dict>
+    </array>
 </dict>
 </plist>
