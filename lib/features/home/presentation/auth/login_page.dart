@@ -26,8 +26,8 @@ class LoginPage extends StatelessWidget {
     final AuthService _authService = AuthService();
     TextEditingController _email = TextEditingController();
     TextEditingController _password = TextEditingController();
-    _email.text = "profiotest@gmail.com";
-    _password.text = "abcd1234";
+    // _email.text = "profiotest@gmail.com";
+    // _password.text = "abcd1234";
 
     return Scaffold(
       appBar: AppBar(
@@ -180,51 +180,54 @@ class LoginPage extends StatelessWidget {
                     child: Text(localeProvider.getText(key: 'orsigninwith')),
                   ),
                   const SizedBox(height: 16),
-                  SizedBox(
-                    width: 200,
-                    child: ElevatedButton(
-                      style: ButtonStyle(
-                        backgroundColor: WidgetStateProperty.all<Color>(
-                            themeProvider.isDarkMode?Colors.white:Colors.black), // Set background color to black
+                  Visibility(
+                    visible: false,
+                    child: SizedBox(
+                      width: 200,
+                      child: ElevatedButton(
+                        style: ButtonStyle(
+                          backgroundColor: WidgetStateProperty.all<Color>(
+                              themeProvider.isDarkMode?Colors.white:Colors.black), // Set background color to black
 
-                      ),
-                      onPressed: () async{
-                        final UserCredential? user = await _googleAuth.signInWithGoogle();
-                        if (user != null) {
-                          GlobalHelper().progressDialog(context,"Google signing in","Signing you in, please wait...");
-                          Map<String,dynamic> apiUser = await getUserByUUIDFromDb(user.user?.uid ?? "") ?? {};
+                        ),
+                        onPressed: () async{
+                          final UserCredential? user = await _googleAuth.signInWithGoogle();
+                          if (user != null) {
+                            GlobalHelper().progressDialog(context,"Google signing in","Signing you in, please wait...");
+                            Map<String,dynamic> apiUser = await getUserByUUIDFromDb(user.user?.uid ?? "") ?? {};
 
-                          //new user not registered yet
-                          if(apiUser.toString() == "{}"){
-                            var result = await userRegister(user.user?.email ?? "", user.user?.uid ?? "");
-                            if(result != ""){
-                              var subScribeLng = await subScribeLanguage(result,"ja"); // assume default setup en and manually adding ja this need to be change based on requirement
+                            //new user not registered yet
+                            if(apiUser.toString() == "{}"){
+                              var result = await userRegister(user.user?.email ?? "", user.user?.uid ?? "");
+                              if(result != ""){
+                                var subScribeLng = await subScribeLanguage(result,"ja"); // assume default setup en and manually adding ja this need to be change based on requirement
+                                await getUserDetails();
+                                Navigator.pop(context); // close loader
+                                Navigator.pushReplacementNamed(context, '/home');
+                              }else{
+                                Navigator.pop(context); // close loader
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text("❌ Google sign in register failed")),
+                                );
+                              }
+                            }else{
+                              // already registered
                               await getUserDetails();
                               Navigator.pop(context); // close loader
                               Navigator.pushReplacementNamed(context, '/home');
-                            }else{
-                              Navigator.pop(context); // close loader
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text("❌ Google sign in register failed")),
-                              );
                             }
+
+
                           }else{
-                            // already registered
-                            await getUserDetails();
-                            Navigator.pop(context); // close loader
-                            Navigator.pushReplacementNamed(context, '/home');
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text("❌ Google sign in failed")),
+                            );
                           }
 
 
-                        }else{
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text("❌ Google sign in failed")),
-                          );
-                        }
-
-
-                      },
-                      child: Text(localeProvider.getText(key: 'googleauth'),style: themeProvider.isDarkMode ? AppText.bodyMedium.copyWith(color: Colors.green):AppText.bodyMedium.copyWith(color: Colors.white)),
+                        },
+                        child: Text(localeProvider.getText(key: 'googleauth'),style: themeProvider.isDarkMode ? AppText.bodyMedium.copyWith(color: Colors.green):AppText.bodyMedium.copyWith(color: Colors.white)),
+                      ),
                     ),
                   ),
                   const SizedBox(height: 16),

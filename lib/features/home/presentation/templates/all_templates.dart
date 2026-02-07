@@ -10,6 +10,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:profio/core/helpers/global_helper.dart';
 import 'package:profio/features/services/api_constants.dart';
 import 'package:profio/features/services/api_service.dart';
+import 'package:screenshot/screenshot.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:flutter/foundation.dart';
 import '../../../../core/constants/app_strings.dart';
@@ -305,7 +306,7 @@ class _AllTemplatesPageState extends State<AllTemplatesPage> {
                                                 if (rawList != null && rawList is List) {
                                                   stringOptions = rawList.whereType<String>().toList(); // keeps only Strings
                                                 }
-                                                shareTemplate(context, template.id ?? "", stringOptions);
+                                                shareTemplate(context, template.id ?? "", stringOptions,html: template.htmlContent ?? "");
                                               },
                                               child: CircleAvatar(
                                                 radius: 20,
@@ -648,7 +649,7 @@ class _AllTemplatesPageState extends State<AllTemplatesPage> {
 
 
   void shareTemplate(BuildContext context, String templateId,
-      List<String> options) {
+      List<String> options,{String html = ""}) {
     String? selectedOption;
 
     showDialog(
@@ -714,20 +715,36 @@ class _AllTemplatesPageState extends State<AllTemplatesPage> {
                         Navigator.of(scaffoldContext).pop();
 
                         if (url.isNotEmpty) {
-                          final response = await getThumbnailUserImage(userDetails);
+                          // final response = await getThumbnailUserImage(userDetails);
+                          //
+                          // final tempDir = await getTemporaryDirectory();
+                          // final file =
+                          // File('${tempDir.path}/profile_thumbnail.jpg');
+                          // await file.writeAsBytes(response.bodyBytes);
+                          //
+                          //
+                          // await SharePlus.instance.share(
+                          //   ShareParams(
+                          //     files: [XFile(file.path)],
+                          //     text: "https://developers.facebook.com/tools/debug/",
+                          //     subject: getText("profio_user_template"),
+                          //   ),
+                          // );
 
-                          final tempDir = await getTemporaryDirectory();
-                          final file =
-                          File('${tempDir.path}/profile_thumbnail.jpg');
-                          await file.writeAsBytes(response.bodyBytes);
+                          shareHtmlAsFile(url,userDetails);
 
-                          await SharePlus.instance.share(
-                            ShareParams(
-                              files: [XFile(file.path)],
-                              text: "$url\nSelected: $selectedOption",
-                              subject: getText("profio_user_template"),
-                            ),
-                          );
+                          // final dir = await getTemporaryDirectory();
+                          // final file = File("${dir.path}/content.html");
+                          // await file.writeAsString(html);
+                          //
+                          // await SharePlus.instance.share(
+                          //   ShareParams(
+                          //     files: [XFile(file.path)],
+                          //     text: url,
+                          //     subject: "HTML Content",
+                          //   ),
+                          // );
+
                         } else {
                           ScaffoldMessenger.of(scaffoldContext).showSnackBar(
                             SnackBar(
@@ -777,4 +794,128 @@ String renderHtmlContent({
     }
   });
 }
+
+Future<void> shareHtmlAsFile(String url,Map<String,dynamic> userDetails) async {
+
+  final screenshotController = ScreenshotController();
+
+
+   String userImage = fetchImage(userDetails['_id'] ?? "","PROFILE", userDetails['profileImageURL']);
+   print("CheckImageUrl:${userImage}");
+   String userName = userDetails['name']['en'] ?? "";
+   String uAddress = userDetails['personalAddress']['en'] ?? "";
+  String  uNumber = userDetails['jobTitle']['en'] ?? "";
+  // 1. Capture widget as PNG bytes
+
+  final bytes = await screenshotController.captureFromWidget(
+    buildPreviewCard(userImage: userImage,userName: userName,userAddress: uAddress,userJob: uNumber),
+    delay: Duration(milliseconds: 200), // lets images load
+  );
+
+
+
+  // 2. Save file
+  final dir = await getTemporaryDirectory();
+  final file = File("${dir.path}/preview.png");
+  await file.writeAsBytes(bytes);
+
+  // 3. Share file
+  await SharePlus.instance.share(
+    ShareParams(
+      files: [XFile(file.path)],
+      text: url, // include the URL too
+    ),
+  );
+}
+
+
+
+Widget buildPreviewCard({
+  required String userImage,
+  required String userName,
+  required String userAddress,
+  required String userJob,
+}) {
+  return Material(
+    color: Colors.white,
+    child: Center(
+      child: Container(
+        width: 600, // good size for sharing
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.12),
+              blurRadius: 14,
+              offset: Offset(0, 4),
+            ),
+          ],
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            /// Image
+            AspectRatio(
+              aspectRatio: 16 / 9,
+              child: Image.network(
+                userImage,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => Container(
+                  color: Colors.grey[200],
+                  child: Icon(Icons.image_not_supported, size: 50, color: Colors.grey),
+                ),
+              ),
+            ),
+
+            /// Content
+            Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  /// Title
+                  Text(
+                    userName,
+                    style: TextStyle(
+                      fontSize: 24,
+                      height: 1.3,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+
+                  /// Description
+                  Text(
+                    userAddress,
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 16,
+                      height: 1.4,
+                      color: Colors.grey[700],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  /// URL
+                  Text(
+                    userJob,
+                    style: TextStyle(
+                      fontSize: 15,
+                      color: Colors.blue,
+                      decoration: TextDecoration.none,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
 

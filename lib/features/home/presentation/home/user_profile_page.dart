@@ -1298,7 +1298,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
                           await SharePlus.instance.share(
                             ShareParams(
                               files: [XFile(file.path)],
-                              text: "$url\nSelected: $selectedOption",
+                              text: url,
                               subject: getText("profio_user_template"),
                             ),
                           );
