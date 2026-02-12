@@ -736,7 +736,7 @@ class _OCRScannerPageState extends State<OCRScannerPage> {
   @override
   void initState() {
     super.initState();
-    _initializeCamera();
+    // _initializeCamera();
   }
 
   Future<void> _initializeCamera() async {
@@ -749,7 +749,7 @@ class _OCRScannerPageState extends State<OCRScannerPage> {
     final cameras = await availableCameras();
     final firstCamera = cameras.first;
 
-    _cameraController = CameraController(firstCamera, ResolutionPreset.medium);
+    _cameraController = CameraController(firstCamera, ResolutionPreset.medium,enableAudio: false);
 
     await _cameraController!.initialize();
 
@@ -758,6 +758,158 @@ class _OCRScannerPageState extends State<OCRScannerPage> {
       _isCameraInitialized = true;
     });
   }
+
+  Future<void> _takePicture() async {
+    if (!_isCameraInitialized || _cameraController == null) return;
+
+    try {
+      final picture = await _cameraController!.takePicture();
+      _image = File(picture.path);
+
+      if (!mounted) return;
+      setState(() {
+        _isCameraInitialized = false; // Hide camera after taking a picture
+      });
+
+      await _processImage(_image!);
+    } catch (e) {
+      debugPrint("Error taking picture: $e");
+    }
+  }
+
+  Future<void> _openCameraDialog() async {
+    // 1. Request camera permission
+    final status = await Permission.camera.status;
+    if (!status.isGranted) {
+      final result = await Permission.camera.request();
+      if (!result.isGranted) {
+        _showPermissionDialog();
+        return;
+      }
+    }
+
+    // 2. Get available cameras
+    final cameras = await availableCameras();
+    if (cameras.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("No camera available")),
+      );
+      return;
+    }
+
+    final controller = CameraController(
+      cameras.first,
+      ResolutionPreset.high,
+      enableAudio: false,
+    );
+
+    try {
+      await controller.initialize();
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Camera initialization failed: $e")),
+      );
+      return;
+    }
+
+    File? capturedImage;
+
+    // 3. Show camera preview in dialog
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return Dialog(
+              backgroundColor: Colors.transparent,
+              insetPadding: const EdgeInsets.all(10),
+              child: Stack(
+                children: [
+                  // Camera preview
+                  Container(
+                    height: MediaQuery.of(context).size.height * 0.7,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(20),
+                      color: Colors.black,
+                    ),
+                    child: Stack(
+                      children: [
+                        CameraPreview(controller),
+                        if (capturedImage != null)
+                          Image.file(capturedImage!, fit: BoxFit.cover),
+                      ],
+                    ),
+                  ),
+
+                  // Close button (always visible)
+                  Positioned(
+                    top: 10,
+                    left: 10,
+                    child: FloatingActionButton(
+                      heroTag: "close_camera",
+                      mini: true,
+                      backgroundColor: Colors.red,
+                      child: const Icon(Icons.close),
+                      onPressed: () {
+                        controller.dispose();
+                        Navigator.pop(context); // Close dialog
+                      },
+                    ),
+                  ),
+
+                  // Capture / Confirm / Retake buttons
+                  Positioned(
+                    bottom: 20,
+                    left: 20,
+                    right: 20,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        if (capturedImage != null)
+                          FloatingActionButton(
+                            heroTag: "retake",
+                            backgroundColor: Colors.red,
+                            child: const Icon(Icons.close),
+                            onPressed: () {
+                              setState(() => capturedImage = null);
+                            },
+                          ),
+                        FloatingActionButton(
+                          heroTag: "capture_confirm",
+                          backgroundColor: Colors.white,
+                          child: Icon(
+                            capturedImage == null ? Icons.camera_alt : Icons.check,
+                            color: Colors.black,
+                          ),
+                          onPressed: () async {
+                            if (capturedImage == null) {
+                              // Take photo
+                              final picture = await controller.takePicture();
+                              setState(() => capturedImage = File(picture.path));
+                            } else {
+                              // Confirm photo
+                              Navigator.pop(context);
+                              await _processImage(capturedImage!);
+                              controller.dispose();
+                            }
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+
+
+
 
   void _showPermissionDialog() {
     showDialog(
@@ -778,23 +930,7 @@ class _OCRScannerPageState extends State<OCRScannerPage> {
     );
   }
 
-  Future<void> _takePicture() async {
-    if (!_isCameraInitialized || _cameraController == null) return;
 
-    try {
-      final picture = await _cameraController!.takePicture();
-      _image = File(picture.path);
-
-      if (!mounted) return;
-      setState(() {
-        _isCameraInitialized = false; // Hide camera after taking a picture
-      });
-
-      await _processImage(_image!);
-    } catch (e) {
-      debugPrint("Error taking picture: $e");
-    }
-  }
 
   Future<void> _pickFromGallery() async {
     final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
@@ -911,6 +1047,89 @@ class _OCRScannerPageState extends State<OCRScannerPage> {
     }
   }
 
+  Widget _buildDraggableSheet() {
+    return DraggableScrollableSheet(
+      initialChildSize: 0.4,
+      minChildSize: 0.2,
+      maxChildSize: 0.9,
+      builder: (context, scrollController) => Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.15),
+              spreadRadius: 2,
+              blurRadius: 10,
+            ),
+          ],
+        ),
+        child: Column(
+          children: [
+            // Top bar with close button
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                CircleAvatar(
+                  radius: 16,
+                  backgroundColor: Colors.grey[300],
+                  child: IconButton(
+                    padding: EdgeInsets.zero,
+                    icon: const Icon(
+                      Icons.close,
+                      color: Colors.black,
+                      size: 20,
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        _scannedText = ""; // Hide the sheet
+                        _image = null;     // Optional: clear image
+                      });
+                    },
+                  ),
+                ),
+              ],
+            ),
+
+            Expanded(
+              child: ListView(
+                controller: scrollController,
+                children: [
+                  TextField(
+                    controller: _nameController,
+                    decoration: const InputDecoration(labelText: "Full Name"),
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: _contactNumberController,
+                    decoration: const InputDecoration(labelText: "Contact Number"),
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: _addressController,
+                    maxLines: 2,
+                    decoration: const InputDecoration(labelText: "Address"),
+                  ),
+                  const SizedBox(height: 20),
+                  ElevatedButton(
+                    onPressed: _isSaving ? null : _saveContact,
+                    child: _isSaving
+                        ? const CircularProgressIndicator(color: Colors.white)
+                        : const Text("Save Contact"),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+
+
+
   @override
   void dispose() {
     _cameraController?.dispose();
@@ -927,103 +1146,105 @@ class _OCRScannerPageState extends State<OCRScannerPage> {
     super.dispose();
   }
 
+
+
   @override
   Widget build(BuildContext context) {
-    final locale = Provider.of<LocaleProvider>(context);
-
     return Scaffold(
-      backgroundColor: Colors.black,
-      body: Stack(
-        children: [
-          // Camera preview
-          if (_isCameraInitialized && _cameraController != null)
-            CameraPreview(_cameraController!),
-
-          // Black overlay
-          Container(
-            color: Colors.black.withOpacity(0.4),
-          ),
-
-          // UI overlay
-          SafeArea(
-            child: Column(
+      backgroundColor: Colors.white, // Changed from black to white
+      body: SafeArea(
+        child: Stack(
+          children: [
+            Column(
               children: [
-                const SizedBox(height: 20),
-                Text(
+                const SizedBox(height: 40),
+                const Text(
                   "OCR Scanner",
-                  style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
-                ),
-                const Spacer(),
-
-                if (_isLoading)
-                  const CircularProgressIndicator(color: Colors.white)
-                else
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      FloatingActionButton(
-                        heroTag: "gallery",
-                        onPressed: _pickFromGallery,
-                        backgroundColor: Colors.white,
-                        child: const Icon(Icons.photo, color: Colors.black),
-                      ),
-                      FloatingActionButton(
-                        heroTag: "camera",
-                        onPressed: _takePicture,
-                        backgroundColor: Colors.white,
-                        child: const Icon(Icons.camera_alt, color: Colors.black),
-                      ),
-                    ],
+                  style: TextStyle(
+                    color: Colors.black, // Black text on white
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
                   ),
+                ),
+                const SizedBox(height: 50),
 
-                const SizedBox(height: 30),
+                // Scan icon / instruction
+                Expanded(
+                  child: Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        TweenAnimationBuilder<double>(
+                          tween: Tween(begin: 1.0, end: 1.2),
+                          duration: const Duration(seconds: 1),
+                          curve: Curves.easeInOut,
+                          builder: (context, scale, child) {
+                            return Transform.scale(
+                              scale: scale,
+                              child: child,
+                            );
+                          },
+                          onEnd: () {
+                            setState(() {}); // Repeat animation
+                          },
+                          child: const Icon(
+                            Icons.camera_alt,
+                            size: 120,
+                            color: Colors.grey, // visible on white
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        const Text(
+                          "Tap Camera or Gallery to scan",
+                          style: TextStyle(
+                            color: Colors.grey,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                // Buttons
+                if (_isLoading)
+                  const CircularProgressIndicator(color: Colors.black)
+                else
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 40),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        FloatingActionButton(
+                          heroTag: "gallery",
+                          onPressed: _pickFromGallery,
+                          backgroundColor: Colors.black,
+                          child: const Icon(Icons.photo, color: Colors.white),
+                        ),
+                        FloatingActionButton(
+                          heroTag: "camera",
+                          onPressed: _openCameraDialog,
+                          backgroundColor: Colors.black,
+                          child: const Icon(Icons.camera_alt, color: Colors.white),
+                        ),
+                      ],
+                    ),
+                  ),
               ],
             ),
-          ),
 
-          if (_scannedText.isNotEmpty && !_isLoading)
-            DraggableScrollableSheet(
-              initialChildSize: 0.4,
-              minChildSize: 0.2,
-              maxChildSize: 0.9,
-              builder: (context, scrollController) => Container(
-                padding: const EdgeInsets.all(16),
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-                ),
-                child: ListView(
-                  controller: scrollController,
-                  children: [
-                    TextField(
-                      controller: _nameController,
-                      decoration: const InputDecoration(labelText: "Full Name"),
-                    ),
-                    const SizedBox(height: 10),
-                    TextField(
-                      controller: _contactNumberController,
-                      decoration: const InputDecoration(labelText: "Contact Number"),
-                    ),
-                    const SizedBox(height: 10),
-                    TextField(
-                      controller: _addressController,
-                      maxLines: 2,
-                      decoration: const InputDecoration(labelText: "Address"),
-                    ),
-                    const SizedBox(height: 20),
-                    ElevatedButton(
-                      onPressed: _isSaving ? null : _saveContact,
-                      child: _isSaving
-                          ? const CircularProgressIndicator(color: Colors.white)
-                          : const Text("Save Contact"),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-        ],
+            // Draggable sheet with scanned data
+            if (_scannedText.isNotEmpty && !_isLoading)
+              _buildDraggableSheet(),
+          ],
+        ),
       ),
     );
   }
+
+
+
+
+
 }
 

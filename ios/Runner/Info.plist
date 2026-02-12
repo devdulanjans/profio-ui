@@ -27,7 +27,7 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSContactsUsageDescription</key>
-	<string>Reason we need access to the contact list</string>
+	<string>This app accesses your contacts to display your contact list and let you select a contact to share content when needed. Contact information is only used for this feature and is not uploaded or stored.</string>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>
