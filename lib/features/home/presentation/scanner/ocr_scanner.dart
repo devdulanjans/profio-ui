@@ -780,15 +780,24 @@ class _OCRScannerPageState extends State<OCRScannerPage> {
   Future<void> _openCameraDialog() async {
     // 1. Request camera permission
     final status = await Permission.camera.status;
+
+    // 1️⃣ If permanently denied → show settings dialog
+    if (status.isPermanentlyDenied) {
+      _showSettingsDialog();
+      return;
+    }
+
+    // 2️⃣ If not granted → request permission (shows iOS popup)
     if (!status.isGranted) {
       final result = await Permission.camera.request();
+
       if (!result.isGranted) {
-        _showPermissionDialog();
+        // Just return silently or show simple explanation
         return;
       }
     }
 
-    // 2. Get available cameras
+    // 3️⃣ Continue with camera
     final cameras = await availableCameras();
     if (cameras.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -803,14 +812,7 @@ class _OCRScannerPageState extends State<OCRScannerPage> {
       enableAudio: false,
     );
 
-    try {
-      await controller.initialize();
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Camera initialization failed: $e")),
-      );
-      return;
-    }
+    await controller.initialize();
 
     File? capturedImage;
 
@@ -907,7 +909,30 @@ class _OCRScannerPageState extends State<OCRScannerPage> {
     );
   }
 
-
+  void _showSettingsDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Camera Permission Required"),
+        content: const Text(
+          "Camera access is required to take photos. "
+              "Please enable it in Settings.",
+        ),
+        actions: [
+          TextButton(
+            child: const Text("Cancel"),
+            onPressed: () => Navigator.pop(context),
+          ),
+          TextButton(
+            child: const Text("Open Settings"),
+            onPressed: () {
+              openAppSettings();
+            },
+          ),
+        ],
+      ),
+    );
+  }
 
 
 
