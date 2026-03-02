@@ -778,135 +778,153 @@ class _OCRScannerPageState extends State<OCRScannerPage> {
   }
 
   Future<void> _openCameraDialog() async {
-    // 1. Request camera permission
-    final status = await Permission.camera.status;
+    try {
+      /// 1️⃣ Request permission directly (no pre-status check)
+      final permission = await Permission.camera.request();
 
-    // 1️⃣ If permanently denied → show settings dialog
-    if (status.isPermanentlyDenied) {
-      _showSettingsDialog();
-      return;
-    }
-
-    // 2️⃣ If not granted → request permission (shows iOS popup)
-    if (!status.isGranted) {
-      final result = await Permission.camera.request();
-
-      if (!result.isGranted) {
-        // Just return silently or show simple explanation
+      if (permission.isPermanentlyDenied) {
+        _showSettingsDialog();
         return;
       }
-    }
 
-    // 3️⃣ Continue with camera
-    final cameras = await availableCameras();
-    if (cameras.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("No camera available")),
+      if (!permission.isGranted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Camera permission denied")),
+        );
+        return;
+      }
+
+      /// 2️⃣ Load available cameras safely
+      List<CameraDescription> cameras;
+
+      try {
+        cameras = await availableCameras();
+      } catch (e) {
+        debugPrint("Camera load error: $e");
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Failed to access camera")),
+        );
+        return;
+      }
+
+      if (cameras.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("No camera available")),
+        );
+        return;
+      }
+
+      /// 3️⃣ Create controller
+      final controller = CameraController(
+        cameras.first,
+        ResolutionPreset.high,
+        enableAudio: false,
       );
-      return;
-    }
 
-    final controller = CameraController(
-      cameras.first,
-      ResolutionPreset.high,
-      enableAudio: false,
-    );
+      await controller.initialize();
 
-    await controller.initialize();
+      if (!mounted) return;
 
-    File? capturedImage;
+      File? capturedImage;
 
-    // 3. Show camera preview in dialog
-    await showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setState) {
-            return Dialog(
-              backgroundColor: Colors.transparent,
-              insetPadding: const EdgeInsets.all(10),
-              child: Stack(
-                children: [
-                  // Camera preview
-                  Container(
-                    height: MediaQuery.of(context).size.height * 0.7,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(20),
-                      color: Colors.black,
+      /// 4️⃣ Show dialog
+      await showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) {
+          return StatefulBuilder(
+            builder: (context, setState) {
+              return Dialog(
+                backgroundColor: Colors.transparent,
+                insetPadding: const EdgeInsets.all(10),
+                child: Stack(
+                  children: [
+                    Container(
+                      height: MediaQuery.of(context).size.height * 0.7,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(20),
+                        color: Colors.black,
+                      ),
+                      child: Stack(
+                        children: [
+                          CameraPreview(controller),
+                          if (capturedImage != null)
+                            Image.file(capturedImage!, fit: BoxFit.cover),
+                        ],
+                      ),
                     ),
-                    child: Stack(
-                      children: [
-                        CameraPreview(controller),
-                        if (capturedImage != null)
-                          Image.file(capturedImage!, fit: BoxFit.cover),
-                      ],
-                    ),
-                  ),
 
-                  // Close button (always visible)
-                  Positioned(
-                    top: 10,
-                    left: 10,
-                    child: FloatingActionButton(
-                      heroTag: "close_camera",
-                      mini: true,
-                      backgroundColor: Colors.red,
-                      child: const Icon(Icons.close),
-                      onPressed: () {
-                        controller.dispose();
-                        Navigator.pop(context); // Close dialog
-                      },
+                    /// Close Button
+                    Positioned(
+                      top: 10,
+                      left: 10,
+                      child: FloatingActionButton(
+                        heroTag: "close_camera",
+                        mini: true,
+                        backgroundColor: Colors.red,
+                        child: const Icon(Icons.close),
+                        onPressed: () async {
+                          await controller.dispose();
+                          if (mounted) Navigator.pop(context);
+                        },
+                      ),
                     ),
-                  ),
 
-                  // Capture / Confirm / Retake buttons
-                  Positioned(
-                    bottom: 20,
-                    left: 20,
-                    right: 20,
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: [
-                        if (capturedImage != null)
+                    /// Capture / Confirm
+                    Positioned(
+                      bottom: 20,
+                      left: 20,
+                      right: 20,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          if (capturedImage != null)
+                            FloatingActionButton(
+                              heroTag: "retake",
+                              backgroundColor: Colors.red,
+                              child: const Icon(Icons.close),
+                              onPressed: () {
+                                setState(() => capturedImage = null);
+                              },
+                            ),
                           FloatingActionButton(
-                            heroTag: "retake",
-                            backgroundColor: Colors.red,
-                            child: const Icon(Icons.close),
-                            onPressed: () {
-                              setState(() => capturedImage = null);
+                            heroTag: "capture_confirm",
+                            backgroundColor: Colors.white,
+                            child: Icon(
+                              capturedImage == null
+                                  ? Icons.camera_alt
+                                  : Icons.check,
+                              color: Colors.black,
+                            ),
+                            onPressed: () async {
+                              if (capturedImage == null) {
+                                final picture =
+                                await controller.takePicture();
+                                setState(() =>
+                                capturedImage = File(picture.path));
+                              } else {
+                                await controller.dispose();
+                                if (mounted) Navigator.pop(context);
+                                await _processImage(capturedImage!);
+                              }
                             },
                           ),
-                        FloatingActionButton(
-                          heroTag: "capture_confirm",
-                          backgroundColor: Colors.white,
-                          child: Icon(
-                            capturedImage == null ? Icons.camera_alt : Icons.check,
-                            color: Colors.black,
-                          ),
-                          onPressed: () async {
-                            if (capturedImage == null) {
-                              // Take photo
-                              final picture = await controller.takePicture();
-                              setState(() => capturedImage = File(picture.path));
-                            } else {
-                              // Confirm photo
-                              Navigator.pop(context);
-                              await _processImage(capturedImage!);
-                              controller.dispose();
-                            }
-                          },
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
-                ],
-              ),
-            );
-          },
-        );
-      },
-    );
+                  ],
+                ),
+              );
+            },
+          );
+        },
+      );
+    } catch (e) {
+      debugPrint("Unexpected camera error: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Something went wrong")),
+      );
+    }
   }
 
   void _showSettingsDialog() {
