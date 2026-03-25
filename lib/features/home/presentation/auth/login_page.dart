@@ -150,6 +150,7 @@ class LoginPage extends StatelessWidget {
                             Navigator.pop(context); // close loader
                             Navigator.pushReplacementNamed(context, '/home');
                           }else{
+                            print("CheckUser:${user}");
                             Navigator.pop(context); // close loader
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(content: Text("❌ Login failed")),
@@ -175,61 +176,67 @@ class LoginPage extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 16),
-                  TextButton(
-                    onPressed: () {},
-                    child: Text(localeProvider.getText(key: 'orsigninwith')),
-                  ),
-                  const SizedBox(height: 16),
                   Visibility(
                     visible: false,
-                    child: SizedBox(
-                      width: 200,
-                      child: ElevatedButton(
-                        style: ButtonStyle(
-                          backgroundColor: WidgetStateProperty.all<Color>(
-                              themeProvider.isDarkMode?Colors.white:Colors.black), // Set background color to black
-
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        TextButton(
+                          onPressed: () {},
+                          child: Text(localeProvider.getText(key: 'orsigninwith')),
                         ),
-                        onPressed: () async{
-                          final UserCredential? user = await _googleAuth.signInWithGoogle();
-                          if (user != null) {
-                            GlobalHelper().progressDialog(context,"Google signing in","Signing you in, please wait...");
-                            Map<String,dynamic> apiUser = await getUserByUUIDFromDb(user.user?.uid ?? "") ?? {};
+                        const SizedBox(height: 16),
+                        SizedBox(
+                          width: 200,
+                          child: ElevatedButton(
+                            style: ButtonStyle(
+                              backgroundColor: WidgetStateProperty.all<Color>(
+                                  themeProvider.isDarkMode?Colors.white:Colors.black), // Set background color to black
 
-                            //new user not registered yet
-                            if(apiUser.toString() == "{}"){
-                              var result = await userRegister(user.user?.email ?? "", user.user?.uid ?? "");
-                              if(result != ""){
-                                var subScribeLng = await subScribeLanguage(result,"ja"); // assume default setup en and manually adding ja this need to be change based on requirement
-                                await getUserDetails();
-                                Navigator.pop(context); // close loader
-                                Navigator.pushReplacementNamed(context, '/home');
+                            ),
+                            onPressed: () async{
+                              final UserCredential? user = await _googleAuth.signInWithGoogle();
+                              if (user != null) {
+                                GlobalHelper().progressDialog(context,"Google signing in","Signing you in, please wait...");
+                                Map<String,dynamic> apiUser = await getUserByUUIDFromDb(user.user?.uid ?? "") ?? {};
+
+                                //new user not registered yet
+                                if(apiUser.toString() == "{}"){
+                                  var result = await userRegister(user.user?.email ?? "", user.user?.uid ?? "");
+                                  if(result != ""){
+                                    var subScribeLng = await subScribeLanguage(result,"ja"); // assume default setup en and manually adding ja this need to be change based on requirement
+                                    await getUserDetails();
+                                    Navigator.pop(context); // close loader
+                                    Navigator.pushReplacementNamed(context, '/home');
+                                  }else{
+                                    Navigator.pop(context); // close loader
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(content: Text("❌ Google sign in register failed")),
+                                    );
+                                  }
+                                }else{
+                                  // already registered
+                                  await getUserDetails();
+                                  Navigator.pop(context); // close loader
+                                  Navigator.pushReplacementNamed(context, '/home');
+                                }
+
+
                               }else{
-                                Navigator.pop(context); // close loader
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text("❌ Google sign in register failed")),
+                                  SnackBar(content: Text("❌ Google sign in failed")),
                                 );
                               }
-                            }else{
-                              // already registered
-                              await getUserDetails();
-                              Navigator.pop(context); // close loader
-                              Navigator.pushReplacementNamed(context, '/home');
-                            }
 
 
-                          }else{
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text("❌ Google sign in failed")),
-                            );
-                          }
-
-
-                        },
-                        child: Text(localeProvider.getText(key: 'googleauth'),style: themeProvider.isDarkMode ? AppText.bodyMedium.copyWith(color: Colors.green):AppText.bodyMedium.copyWith(color: Colors.white)),
-                      ),
+                            },
+                            child: Text(localeProvider.getText(key: 'googleauth'),style: themeProvider.isDarkMode ? AppText.bodyMedium.copyWith(color: Colors.green):AppText.bodyMedium.copyWith(color: Colors.white)),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
+
                   const SizedBox(height: 16),
 
                   TextButton(
@@ -264,3 +271,5 @@ Future<void> getUserDetails() async{
   await ServiceHelper.init();
   print("CheckProfileStatus:${ServiceHelper.isProfileCompleted}");
 }
+
+

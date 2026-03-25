@@ -1,7 +1,10 @@
+import java.util.Properties
+import java.io.FileInputStream
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
-    id("com.google.gms.google-services") // ✅ Firebase
+    id("com.google.gms.google-services")
     id("dev.flutter.flutter-gradle-plugin")
 }
 
@@ -16,7 +19,7 @@ android {
     }
 
     kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_11.toString()
+        jvmTarget = "11"
     }
 
     defaultConfig {
@@ -27,10 +30,25 @@ android {
         versionName = flutter.versionName
     }
 
+    // ✅ Proper signing config (Kotlin DSL)
+    signingConfigs {
+        create("release") {
+            val keystorePropertiesFile = rootProject.file("key.properties")
+            if (keystorePropertiesFile.exists()) {
+                val keystoreProperties = Properties()
+                keystoreProperties.load(FileInputStream(keystorePropertiesFile))
+
+                storeFile = file(keystoreProperties["storeFile"] as String)
+                storePassword = keystoreProperties["storePassword"] as String
+                keyAlias = keystoreProperties["keyAlias"] as String
+                keyPassword = keystoreProperties["keyPassword"] as String
+            }
+        }
+    }
 
     buildTypes {
         getByName("release") {
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("release") // ✅ FIXED
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(
@@ -47,11 +65,8 @@ flutter {
 
 dependencies {
     implementation("com.google.mlkit:text-recognition:16.0.0")
-
     implementation("com.google.mlkit:text-recognition-chinese:16.0.0")
     implementation("com.google.mlkit:text-recognition-devanagari:16.0.0")
     implementation("com.google.mlkit:text-recognition-japanese:16.0.0")
     implementation("com.google.mlkit:text-recognition-korean:16.0.0")
 }
-
-

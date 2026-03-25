@@ -99,6 +99,39 @@ Future<String> userRegister(String email,String userId) async {
   }
 }
 
+Future<bool> userReactivate() async {
+  var user = await getCurrentUser();
+  final url = Uri.parse("$baseUrl$postReactivateUserAccount");
+
+  final Map<String, String> requestBody = {
+    "uid": user?.uid ?? "",
+  };
+
+  try {
+    final headers = await getAuthHeaders();
+    log("CheckApiUrl:${url}");
+    log("CheckHeaders:${headers}");
+    log("CheckRequest:${requestBody}");
+    final response = await http.post(
+      url,
+      headers: headers,
+      body: jsonEncode(requestBody),
+    );
+
+    log("CheckResponseCode:${response.statusCode}");
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      return true;
+    }
+    else {
+      print("❌ Failed: ${response.statusCode} - ${response.body}");
+      return false;
+    }
+  } catch (e) {
+    print("❌ Error: $e");
+    return false;
+  }
+}
+
 
 Future<List<Subscription>> getSubscriptionTypes() async {
   List<Subscription> subscriptions = [];
@@ -228,9 +261,13 @@ Future<Map<String, dynamic>> getUserByUUID() async {
     if (response.statusCode == 200 ) {
       final results = json.decode(response.body);
       data = results;
+      data['isSuccess'] = true;
     }
     else {
       print("❌ Failed: ${response.statusCode} - ${response.body}");
+      final results = json.decode(response.body);
+      data = results;
+      data['isSuccess'] = false;
       return data;
     }
   } catch (e) {
@@ -332,7 +369,35 @@ Future<bool> createTemplateForUser(String userId,String templateId) async {
 }
 
 
-Future<bool> deactivateAccount(String userId,String uuid) async {
+Future<bool> deactivateAccount(String userId,String uuid,{bool isDelete = false}) async {
+  final url = Uri.parse("$baseUrl$postDeactivateAccount");
+
+
+  try {
+    final headers = await getAuthHeaders();
+    String request = jsonEncode({
+      "userId": userId,
+      "uid": uuid,
+      "isDelete":isDelete
+    });
+    final response = await http.post(url, headers: headers, body:request);
+
+    log("checkApiURl:$url\n CheckUserRequest-$userId \n ResponseCode:- ${response.statusCode}");
+    if (response.statusCode == 200 ) {
+      final results = json.decode(response.body);
+      return true;
+    }
+    else {
+      print("❌ Failed: ${response.statusCode} - ${response.body}");
+      return false;
+    }
+  } catch (e) {
+    print("❌ Error: $e");
+    return false;
+  }
+}
+
+Future<bool> deleteAccount(String userId,String uuid) async {
   final url = Uri.parse("$baseUrl$postDeactivateAccount");
 
 

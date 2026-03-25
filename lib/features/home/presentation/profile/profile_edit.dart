@@ -123,10 +123,29 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
     });
 
     userDetails = await getUserByUUID();
-    await setUserDetails(userDetails);
-    setState(() {
-      isLoading = false;
-    });
+    if(userDetails['isSuccess'] ?? false){
+      await setUserDetails(userDetails);
+      setState(() {
+        isLoading = false;
+      });
+    }else{
+      String msg = userDetails['message'] ?? "";
+      print("User Profile Fetch Failed : ${userDetails}");
+      if(msg.contains("inactive")){
+        print("User Profile Fetch Failed : Inactive User");
+        bool result = await showReactivateDialog(context) ?? false;
+        if(result){
+          reactivateUser(context);
+        }else{
+          logOut(context);
+        }
+      }else{
+
+      }
+
+    }
+
+
   }
 
   Future<void> _refreshUserDetails() async {
@@ -1493,11 +1512,54 @@ void logOut(BuildContext context) async{
   Navigator.pushNamedAndRemoveUntil(context, '/login', (Route<dynamic> route) => false);
 }
 
+void reactivateUser(BuildContext context) async{
+  GlobalHelper().progressDialog(context,"Reactivate","reactivating account, please wait...");
+  var result = await userReactivate();
+  final AuthService _authService = AuthService();
+  await _authService.signOut();
+  appUserId = "";
+  await clearSharedPreference();
+  userSubscribedPlan = Subscription(id: "NONE");
+  Navigator.of(context).pop();
+  Navigator.pushNamedAndRemoveUntil(context, '/login', (Route<dynamic> route) => false);
+  if(result){
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text("User Activated.Please login again..")),
+    );
+  }else{
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text("User Activated failed.Please try again later..")),
+    );
 
 
+  }
+}
 
-
-
+Future<bool?> showReactivateDialog(BuildContext context) {
+  return showDialog<bool>(
+    barrierDismissible: false,
+    context: context,
+    builder: (context) {
+      return PopScope(
+        canPop: false,
+        child: AlertDialog(
+          title: Text('User Deactivated'),
+          content: Text('This account is currently deactivated. Would you like to reactivate it or log out?',style: TextStyle(color: Colors.black),),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: Text('Log out'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: Text('Confirm'),
+            ),
+          ],
+        ),
+      );
+    },
+  );
+}
 
 
 

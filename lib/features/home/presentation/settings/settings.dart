@@ -165,6 +165,11 @@ class SettingsList extends StatelessWidget {
             'subTitle': localeProvider.getText(key: ''),
           },
           {
+            'key': 'delete_account',
+            'title': localeProvider.getText(key: 'delete_account'),
+            'subTitle': localeProvider.getText(key: ''),
+          },
+          {
             'key': 'logout_account',
             'title': localeProvider.getText(key: 'logout_account'),
             'subTitle': localeProvider.getText(key: ''),
@@ -220,9 +225,9 @@ class SettingsList extends StatelessWidget {
                                GlobalHelper().progressDialog(context,localeProvider.getText(key: 'deactivate_account'),localeProvider.getText(key: 'deactivate_account_progress'));
                                 Map<String,dynamic> userDetails = await getUserByUUID();
                                 if(userDetails != {}){
-                                  var result = await deactivateAccount(userDetails["_id"], userDetails["uid"]);
+                                  var result = await deactivateAccount(userDetails["_id"], userDetails["uid"],isDelete: false);
                                   if(result){
-                                    final user = await _authService.deleteUser();
+                                    final user = await _authService.deactivateUser();
                                     appUserId = "";
                                     await clearSharedPreference();
                                     userSubscribedPlan = Subscription(id: "NONE");
@@ -242,6 +247,43 @@ class SettingsList extends StatelessWidget {
                                 }
                                
                                 
+
+                          });
+
+                    }
+                    else if((subtopic['key'] ?? "") == 'delete_account'){
+                      GlobalHelper().showConfirmationDialog(
+                          context,
+                          localeProvider.getText(key: 'delete_account'),
+                          localeProvider.getText(key: 'delete_account_confirm'),
+                          localeProvider.getText(key: 'cancel'),
+                          localeProvider.getText(key: 'yes'),
+                              () async {
+                            GlobalHelper().progressDialog(context,localeProvider.getText(key: 'delete_account'),localeProvider.getText(key: 'delete_account_progress'));
+                            Map<String,dynamic> userDetails = await getUserByUUID();
+                            if(userDetails != {}){
+                              var result = await deactivateAccount(userDetails["_id"], userDetails["uid"],isDelete: true);
+                              if(result){
+                                final user = await _authService.deleteUser();
+                                appUserId = "";
+                                await clearSharedPreference();
+                                userSubscribedPlan = Subscription(id: "NONE");
+                                Navigator.of(context).pop();
+                                Navigator.pushNamedAndRemoveUntil(context, '/login', (Route<dynamic> route) => false);
+                              }else{
+                                Navigator.of(context).pop();
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text("${localeProvider.getText(key: 'deactivate_account_failed')} $failedIcon")),
+                                );
+                              }
+                            }else{
+                              Navigator.of(context).pop();
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text("${localeProvider.getText(key: 'deactivate_account_failed')} $failedIcon")),
+                              );
+                            }
+
+
 
                           });
 

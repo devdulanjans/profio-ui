@@ -41,6 +41,27 @@ class AuthService {
     }
   }
 
+
+  Future<bool> deactivateUser() async {
+    try {
+      User? user = FirebaseAuth.instance.currentUser;
+
+      if (user != null) {
+        await FirebaseAuth.instance.signOut();
+
+        return true;
+      }
+
+      return false;
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'requires-recent-login') {
+        return false;
+      } else {
+        return false;
+      }
+    }
+  }
+
   Future<bool> deleteUser() async {
     try {
       User? user = _auth.currentUser;

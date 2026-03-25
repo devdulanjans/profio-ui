@@ -19,4 +19,5 @@ String deleteDocument (String userId,String documentId) =>"/api/users/document/$
 const patchUpdateDocumentTitle = "/api/users/document/title";
 String deselectTemplate (String userID,String templateId) =>"/api/user-templates/$userID/$templateId";
 const postDeactivateAccount = "/api/access/deactivate";
+const postReactivateUserAccount = "/api/reactivation/reactivate";
 

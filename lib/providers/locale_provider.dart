@@ -747,6 +747,22 @@ class LocaleProvider with ChangeNotifier {
         AppLanguage.english: "Deactivating account failed.",
         AppLanguage.japanese: "アカウントの無効化に失敗しました。",
       },
+      'delete_account': {
+        AppLanguage.english: "Delete account",
+        AppLanguage.japanese: "アカウントを削除する",
+      },
+      'delete_account_confirm': {
+        AppLanguage.english: "Do you want to delete this account ?",
+        AppLanguage.japanese: "このアカウントを削除しますか？",
+      },
+      'delete_account_progress': {
+        AppLanguage.english: "Deleting account, please wait...",
+        AppLanguage.japanese: "アカウントを削除しています。しばらくお待ちください。...",
+      },
+      'delete_account_failed': {
+        AppLanguage.english: "Deleting account failed.",
+        AppLanguage.japanese: "アカウントの削除に失敗しました。",
+      },
 
 
 
